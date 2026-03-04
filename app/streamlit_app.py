@@ -108,28 +108,64 @@ with col2:
     st.subheader("Alerte seuil")
     st.write(f"Seuil actuel : **{seuil:.2f}**")
 
-    # Alertes historiques (dernier 1 an)
+    # -----------------------------
+    # Historique (365 derniers jours)
+    # -----------------------------
     st.markdown("### Historique (365 derniers jours)")
     last_year = df_hist[df_hist["date"] >= (df_hist["date"].max() - pd.Timedelta(days=365))].copy()
     last_year["alerte"] = last_year["niveau_nappe"] < seuil
-    occ_hist = last_year[last_year["alerte"]][["date", "niveau_nappe"]].sort_values("date", ascending=False)
+
+    occ_hist = last_year[last_year["alerte"]][["date", "niveau_nappe"]].copy()
+    occ_hist = occ_hist.sort_values("date", ascending=False)
+    occ_hist["seuil"] = float(seuil)
+    occ_hist = occ_hist.rename(columns={"niveau_nappe": "niveau"})
 
     if occ_hist.empty:
         st.success("Aucune occurrence sous le seuil sur les 365 derniers jours.")
+
+        demo_hist = pd.DataFrame({
+            "date": pd.to_datetime(["2026-01-12", "2026-01-10", "2026-01-08"]),
+            "niveau": [seuil - 0.25, seuil - 0.12, seuil - 0.40],
+            "seuil": [float(seuil), float(seuil), float(seuil)]
+        }).sort_values("date", ascending=False)
+
+        st.caption("Exemple (données fictives) — format du tableau d’alertes historique :")
+        st.dataframe(demo_hist, use_container_width=True, height=160)
     else:
         st.error(f"{len(occ_hist)} jour(s) sous le seuil sur les 365 derniers jours.")
         st.dataframe(occ_hist, use_container_width=True, height=220)
 
+    # -----------------------------
+    # Prévision (horizon sélectionné)
+    # -----------------------------
     st.markdown("### Prévision (horizon sélectionné)")
+
+    fc_sc = fc[fc["scenario"] == scenario].sort_values("date").head(horizon).copy()
     fc_sc["alerte"] = fc_sc["niveau_nappe"] < seuil
+
     occ_pred = fc_sc[fc_sc["alerte"]][["date", "niveau_nappe"]].copy()
+    occ_pred = occ_pred.sort_values("date", ascending=False)
+    occ_pred["seuil"] = float(seuil)
+    occ_pred = occ_pred.rename(columns={"niveau_nappe": "niveau"})
 
     if occ_pred.empty:
         st.success("Aucune alerte prévue sur l'horizon sélectionné.")
+
+        demo_pred = pd.DataFrame({
+            "date": pd.to_datetime(["2026-03-05", "2026-03-08"]),
+            "niveau": [seuil - 0.18, seuil - 0.05],
+            "seuil": [float(seuil), float(seuil)]
+        }).sort_values("date", ascending=False)
+
+        st.caption("Exemple (données fictives) — format du tableau d’alertes prévision :")
+        st.dataframe(demo_pred, use_container_width=True, height=140)
     else:
         st.warning(f"Alerte prévue : {len(occ_pred)} jour(s) sous le seuil.")
         st.dataframe(occ_pred, use_container_width=True, height=220)
 
+    # -----------------------------
+    # Export
+    # -----------------------------
     st.markdown("### Export")
     st.download_button(
         "Télécharger prévision CSV",
@@ -137,11 +173,3 @@ with col2:
         file_name=f"forecast_{scenario}_{horizon}d.csv",
         mime="text/csv",
     )
-
-st.divider()
-st.subheader("Résumé")
-st.write(
-    f"- Dernière date historique: **{df_hist['date'].max().date()}**\n"
-    f"- Première date prévision: **{fc_sc['date'].min().date()}**\n"
-    f"- Dernière date prévision: **{fc_sc['date'].max().date()}**\n"
-)
