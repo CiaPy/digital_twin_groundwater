@@ -49,14 +49,56 @@ fc_sc = fc[fc["scenario"] == scenario].sort_values("date").head(horizon).copy()
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    st.subheader("Historique — niveau de nappe")
-    hist_plot = df_hist.set_index("date")[["niveau_nappe"]]
-    st.line_chart(hist_plot, height=320)
+    st.subheader("Historique + Prévisions (un seul graphique)")
 
-    st.subheader(f"Prévision — scénario: {scenario} (horizon {horizon} jours)")
-    pred_plot = fc_sc.set_index("date")[["niveau_nappe"]]
-    st.line_chart(pred_plot, height=320)
+    # Historique
+    df_hist_plot = df_hist[["date", "niveau_nappe"]].dropna().sort_values("date")
 
+    # Prévisions : on prend les 3 scénarios sur l'horizon
+    fc_horizon = fc.sort_values("date").groupby("scenario").head(horizon)
+
+    # Aligner les scénarios sur la même grille de dates
+    pivot = fc_horizon.pivot_table(
+        index="date",
+        columns="scenario",
+        values="niveau_nappe",
+        aggfunc="first"
+    ).reset_index()
+
+    fig = go.Figure()
+
+    # 1) Historique (noir)
+    fig.add_trace(
+        go.Scatter(
+            x=df_hist_plot["date"],
+            y=df_hist_plot["niveau_nappe"],
+            mode="lines",
+            name="Historique",
+        )
+    )
+
+    # 2) Scénarios + enveloppe dry/wet
+    if "wet" in pivot.columns:
+        fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["wet"], mode="lines", name="wet"))
+    if "dry" in pivot.columns:
+        fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["dry"], mode="lines", name="dry", fill="tonexty", opacity=0.25))
+    if "medium" in pivot.columns:
+        fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["medium"], mode="lines", name="medium"))
+
+    # 3) Seuil
+    fig.add_hline(y=seuil, line_dash="dash", annotation_text="Seuil", annotation_position="top left")
+
+    fig.update_layout(
+        height=520,
+        xaxis_title="Date",
+        yaxis_title="Niveau de nappe",
+        legend=dict(orientation="h"),
+        margin=dict(l=20, r=20, t=40, b=20),
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Option météo
     if show_meteo:
         st.subheader("Météo — pluie et ETP (historique)")
         met = df_hist.set_index("date")[["pluie_mm", "etp_mm"]]
