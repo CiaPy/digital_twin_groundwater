@@ -211,9 +211,8 @@ with col2:
         #st.success("Aucune alerte prévue sur l'horizon sélectionné.")
 
         demo_pred = pd.DataFrame({
-            "date": pd.to_datetime(["2026-03-05", "2026-03-08"]),
-            "niveau": [seuil - 0.18, seuil - 0.05],
-            "seuil": [float(seuil), float(seuil)]
+            "date": pd.to_datetime(["2026-06-05", "2026-08-08"]),
+            "niveau": [seuil - 0.28, seuil - 0.20],
         }).sort_values("date", ascending=False)
 
         st.caption(" ")
