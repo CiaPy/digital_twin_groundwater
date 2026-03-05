@@ -7,9 +7,20 @@ st.set_page_config(page_title="Synthetic Digital Twin GWL", layout="wide")
 st.markdown("""
 <style>
 
+/* Onglets */
 button[data-baseweb="tab"] {
-    font-size: 50px;
-    font-weight: 800;
+    font-size: 22px;           /* taille du texte */
+    font-weight: 700;          /* texte plus épais */
+    padding: 12px 20px;        /* taille du bouton */
+    border-radius: 10px 10px 0px 0px;
+    border: 2px solid #d0d0d0; /* contour */
+    margin-right: 6px;
+}
+
+/* Onglet actif */
+button[data-baseweb="tab"][aria-selected="true"] {
+    border-bottom: 4px solid #C2410C; /* couleur active */
+    background-color: #F7F3EE;
 }
 
 </style>
