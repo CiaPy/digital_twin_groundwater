@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import time
 
 st.set_page_config(page_title="Digital Twin Nappe", layout="wide")
 
@@ -447,57 +448,67 @@ with tab1:
         pass
 
 with tab2:
-    st.subheader("Simulation sur 1 an (avancement jour par jour)")
+    st.subheader("Simulation temps réel (1 an)")
 
     # Base data triée
     df_daily = df[["date", "niveau_nappe", "pluie_mm", "etp_mm"]].dropna(subset=["niveau_nappe"]).copy()
     df_daily = df_daily.sort_values("date")
-
-    # Fenêtre simulée = 1 an avant la dernière date dispo
     end_date = df_daily["date"].max().normalize()
     start_date = (end_date - pd.Timedelta(days=365)).normalize()
-
     sim_dates = pd.date_range(start_date, end_date, freq="D")
 
-    # session state pour jouer
+    # --- Session state ---
     if "sim_idx" not in st.session_state:
-        st.session_state.sim_idx = len(sim_dates) - 1
+        st.session_state.sim_idx = 0
+    if "playing" not in st.session_state:
+        st.session_state.playing = False
 
-    c1, c2, c3 = st.columns([2,1,1])
+    # --- Controls ---
+    c1, c2, c3, c4 = st.columns([1, 1, 1, 2])
+
     with c1:
-        sim_idx = st.slider("Jour simulé", 0, len(sim_dates)-1, st.session_state.sim_idx)
-    with c2:
-        if st.button("◀️ -1 jour"):
-            st.session_state.sim_idx = max(0, st.session_state.sim_idx - 1)
-            st.rerun()
-    with c3:
-        if st.button("▶️ +1 jour"):
-            st.session_state.sim_idx = min(len(sim_dates)-1, st.session_state.sim_idx + 1)
+        if st.button("▶️ Play"):
+            st.session_state.playing = True
             st.rerun()
 
-    now_date = sim_dates[sim_idx]
+    with c2:
+        if st.button("⏸ Pause"):
+            st.session_state.playing = False
+            st.rerun()
+
+    with c3:
+        if st.button("🔄 Reset"):
+            st.session_state.sim_idx = 0
+            st.session_state.playing = False
+            st.rerun()
+
+    with c4:
+        speed = st.slider("Vitesse (sec / jour simulé)", 0.01, 0.50, 0.08, 0.01)
+
+    # --- Current simulated date ---
+    st.session_state.sim_idx = min(st.session_state.sim_idx, len(sim_dates) - 1)
+    now_date = sim_dates[st.session_state.sim_idx]
 
     # Niveau "actuel" = dernière valeur <= now_date
     df_up_to_now = df_daily[df_daily["date"] <= now_date]
-    if df_up_to_now.empty:
-        st.warning("Pas de données avant cette date.")
-        st.stop()
-
     current_level = float(df_up_to_now["niveau_nappe"].iloc[-1])
     is_safe = current_level > seuil
 
-    # Sidebar état (opacité + pastilles)
+    # Sidebar: pastilles + infos (ça se met à jour à chaque rerun)
     sidebar_etat(is_safe)
     st.sidebar.caption(f"Date simulée : **{now_date.date()}**")
-    st.sidebar.caption(f"Niveau actuel : **{current_level:.2f}**  |  Seuil : **{seuil:.2f}**")
+    st.sidebar.caption(f"Niveau : **{current_level:.2f}**  |  Seuil : **{seuil:.2f}**")
 
-    # ---- Prévision à partir de now_date ----
-    # (on suppose que ton fc a des dates absolues; sinon adapte si c'est relatif)
+    # --- Progress ---
+    progress = (st.session_state.sim_idx + 1) / len(sim_dates)
+    st.progress(progress)
+    st.caption(f"Jour {st.session_state.sim_idx + 1}/{len(sim_dates)} — {now_date.date()}")
+
+    # --- Graph (historique jusqu'à now_date + prévisions) ---
     fc_future = fc[fc["date"] > now_date].sort_values("date").groupby("scenario").head(horizon)
     pivot = (fc_future.pivot_table(index="date", columns="scenario", values="niveau_nappe", aggfunc="first")
              .reset_index())
 
-    # ---- Graph (historique tronqué + prévisions) ----
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=df_up_to_now["date"], y=df_up_to_now["niveau_nappe"],
@@ -508,13 +519,13 @@ with tab2:
         if "wet" in pivot.columns:
             fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["wet"], mode="lines", name="wet"))
         if "dry" in pivot.columns:
-            fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["dry"], mode="lines", name="dry", fill="tonexty", opacity=0.25))
+            fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["dry"], mode="lines", name="dry",
+                                     fill="tonexty", opacity=0.25))
         if "medium" in pivot.columns:
             fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["medium"], mode="lines", name="medium"))
 
     fig.add_hline(y=seuil, line_dash="dash", annotation_text="Seuil", annotation_position="top left")
 
-    # (optionnel) ancien seuil si tu veux aussi en simulation
     if show_old_seuil:
         fig.add_hline(y=old_seuil, line_color="red", line_dash="dash", opacity=0.25, line_width=2,
                       annotation_text="Ancien seuil", annotation_position="top left")
@@ -524,15 +535,14 @@ with tab2:
                       margin=dict(l=20, r=20, t=40, b=20))
     st.plotly_chart(fig, use_container_width=True)
 
-    # ---- Tableaux remplis (historique + prévision) ----
+    # --- Tableaux (historique & prévision) ---
     colA, colB = st.columns(2)
 
     with colA:
-        st.markdown("### Historique des alertes (365j, jusqu'à la date simulée)")
+        st.markdown("### Historique des alertes (365j)")
         occ_hist = episodes_sous_seuil(df_daily, seuil, now_date, window_days=365)
 
         if occ_hist.empty:
-            # 4 lignes fictives (comme tu veux)
             demo_hist = pd.DataFrame({
                 "Date_debut": pd.to_datetime(["2025-02-10","2024-11-18","2024-08-03","2024-04-15"]),
                 "Date_fin":   pd.to_datetime(["2025-02-14","2024-11-21","2024-08-05","2024-04-17"]),
@@ -545,11 +555,10 @@ with tab2:
             st.dataframe(occ_hist, use_container_width=True, height=220)
 
     with colB:
-        st.markdown("### Prévision des alertes (à partir de la date simulée)")
+        st.markdown("### Prévision des alertes")
         fc_sc = fc[(fc["scenario"] == scenario) & (fc["date"] > now_date)].sort_values("date").head(horizon).copy()
         fc_sc["alerte"] = fc_sc["niveau_nappe"] < seuil
 
-        # épisodes dans la prévision (même logique)
         pred_days = fc_sc[fc_sc["alerte"]].copy()
         if pred_days.empty:
             demo_pred = pd.DataFrame({
@@ -571,3 +580,12 @@ with tab2:
                 .sort_values("Date_debut", ascending=False)
             )
             st.dataframe(occ_pred, use_container_width=True, height=220)
+
+    # --- AUTO-ADVANCE (le "temps réel") ---
+    if st.session_state.playing:
+        if st.session_state.sim_idx >= len(sim_dates) - 1:
+            st.session_state.playing = False
+        else:
+            time.sleep(speed)
+            st.session_state.sim_idx += 1
+            st.rerun()
