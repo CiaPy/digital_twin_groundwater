@@ -171,7 +171,7 @@ def sidebar_etat(is_safe: bool):
     </div>
     """, unsafe_allow_html=True)
 
-tab1, tab2 = st.tabs(["📊 Dashboard", "🧪 Simulation"])
+tab1, tab2 = st.tabs(["Dashboard", "Simulation"])
 
 st.markdown("""
 <script>
