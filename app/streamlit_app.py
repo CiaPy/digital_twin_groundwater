@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import time
 
-st.set_page_config(page_title="Digital Twin Nappe", layout="wide")
+st.set_page_config(page_title="Synthetic Digital Twin GWL", layout="wide")
 st.markdown("""
 <style>
 
@@ -14,7 +14,7 @@ button[data-baseweb="tab"] {
 
 </style>
 """, unsafe_allow_html=True)
-st.title("Digital Twin — Niveau de nappe ")
+st.title("Synthetic Digital Twin for Groundwater Extraction and Monitoring ")
 st.caption("Piézomètre Hub'Eau + météo SAFRAN (pluie/ETP) + régression linéaire + scénarios")
 
 # ---- Load data ----
