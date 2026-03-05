@@ -9,11 +9,12 @@ st.markdown("""
 
 button[data-baseweb="tab"] {
     font-size: 50px;
-    font-weight: 600;
+    font-weight: 800;
 }
 
 </style>
 """, unsafe_allow_html=True)
+
 st.title("Synthetic Digital Twin for Groundwater Extraction and Monitoring ")
 st.caption("Piézomètre Hub'Eau + météo SAFRAN (pluie/ETP) + régression linéaire + scénarios")
 
