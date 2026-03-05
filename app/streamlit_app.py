@@ -224,226 +224,226 @@ with tab1:
         col1, col2 = st.columns([2, 1])
         
         with col1:
-        st.subheader("Historique + Prévisions")
-        
-        # Historique
-        df_hist_plot = df_hist[["date", "niveau_nappe"]].dropna().sort_values("date")
-        
-        # Prévisions : on prend les 3 scénarios sur l'horizon
-        fc_horizon = fc.sort_values("date").groupby("scenario").head(horizon)
-        
-        # Aligner les scénarios sur la même grille de dates
-        pivot = fc_horizon.pivot_table(
-            index="date",
-            columns="scenario",
-            values="niveau_nappe",
-            aggfunc="first"
-        ).reset_index()
-        
-        fig = go.Figure()
-        
-        # 1) Historique (noir)
-        fig.add_trace(
-            go.Scatter(
-                x=df_hist_plot["date"],
-                y=df_hist_plot["niveau_nappe"],
-                mode="lines",
-                name="Historique",
-            )
-        )
-        
-        # 2) Scénarios + enveloppe dry/wet
-        if "wet" in pivot.columns:
-            fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["wet"], mode="lines", name="wet"))
-        if "dry" in pivot.columns:
-            fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["dry"], mode="lines", name="dry", fill="tonexty", opacity=0.25))
-        if "medium" in pivot.columns:
-            fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["medium"], mode="lines", name="medium"))
-        
-        # 3) Seuil
-        fig.add_hline(y=seuil, line_dash="dash", annotation_text="Seuil actuel", annotation_position="top left")
-        
-        if show_old_seuil:
-            fig.add_hline(
-                y=old_seuil,
-                line_color="red",
-                line_dash="dash",
-                opacity=0.25,
-                line_width=2,
-                annotation_text="Ancien seuil",
-                annotation_position="top left",
-            )
-        
-        fig.update_layout(
-            height=520,
-            xaxis_title="Date",
-            yaxis_title="Niveau de nappe",
-            legend=dict(orientation="h"),
-            margin=dict(l=20, r=20, t=40, b=20),
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Option météo
-        if show_meteo:
-            st.subheader("Météo — pluie et ETP ")
-            met = df_hist.set_index("date")[["pluie_mm", "etp_mm"]]
+            st.subheader("Historique + Prévisions")
             
-            # --- 1) Préparer une série mensuelle (cumul par mois) ---
-            met_daily = df_hist[["date", "pluie_mm", "etp_mm"]].dropna().sort_values("date").copy()
-            met_daily = met_daily.set_index("date")
+            # Historique
+            df_hist_plot = df_hist[["date", "niveau_nappe"]].dropna().sort_values("date")
             
-            met_month = met_daily.resample("MS").sum()  # cumul mensuel
-            met_month = met_month.reset_index()
+            # Prévisions : on prend les 3 scénarios sur l'horizon
+            fc_horizon = fc.sort_values("date").groupby("scenario").head(horizon)
             
-            # Option : afficher seulement les 24 derniers mois par ex
-            n_months = st.slider("Nombre de mois affichés", 6, 60, 24)
-            met_month = met_month.tail(n_months)
+            # Aligner les scénarios sur la même grille de dates
+            pivot = fc_horizon.pivot_table(
+                index="date",
+                columns="scenario",
+                values="niveau_nappe",
+                aggfunc="first"
+            ).reset_index()
             
-            # --- 2) Plot barres (pluie) + ligne (ETP) ---
-            fig_met = go.Figure()
+            fig = go.Figure()
             
-            fig_met.add_trace(
-                go.Bar(
-                    x=met_month["date"],
-                    y=met_month["pluie_mm"],
-                    name="Précipitations (cumul mensuel)",
-                )
-            )
-            
-            fig_met.add_trace(
+            # 1) Historique (noir)
+            fig.add_trace(
                 go.Scatter(
-                    x=met_month["date"],
-                    y=met_month["etp_mm"],
+                    x=df_hist_plot["date"],
+                    y=df_hist_plot["niveau_nappe"],
                     mode="lines",
-                    name="ETP (cumul mensuel)",
-                    yaxis="y2",  # axe secondaire pour lisibilité
+                    name="Historique",
                 )
             )
             
-            fig_met.update_layout(
-                height=320,
-                barmode="group",
-                xaxis_title="Mois",
-                yaxis=dict(title="Pluie (mm/mois)"),
-                yaxis2=dict(
-                    title="ETP (mm/mois)",
-                    overlaying="y",
-                    side="right",
-                    showgrid=False,
-                ),
+            # 2) Scénarios + enveloppe dry/wet
+            if "wet" in pivot.columns:
+                fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["wet"], mode="lines", name="wet"))
+            if "dry" in pivot.columns:
+                fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["dry"], mode="lines", name="dry", fill="tonexty", opacity=0.25))
+            if "medium" in pivot.columns:
+                fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["medium"], mode="lines", name="medium"))
+            
+            # 3) Seuil
+            fig.add_hline(y=seuil, line_dash="dash", annotation_text="Seuil actuel", annotation_position="top left")
+            
+            if show_old_seuil:
+                fig.add_hline(
+                    y=old_seuil,
+                    line_color="red",
+                    line_dash="dash",
+                    opacity=0.25,
+                    line_width=2,
+                    annotation_text="Ancien seuil",
+                    annotation_position="top left",
+                )
+            
+            fig.update_layout(
+                height=520,
+                xaxis_title="Date",
+                yaxis_title="Niveau de nappe",
                 legend=dict(orientation="h"),
                 margin=dict(l=20, r=20, t=40, b=20),
             )
             
-            st.plotly_chart(fig_met, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Option météo
+            if show_meteo:
+                st.subheader("Météo — pluie et ETP ")
+                met = df_hist.set_index("date")[["pluie_mm", "etp_mm"]]
+                
+                # --- 1) Préparer une série mensuelle (cumul par mois) ---
+                met_daily = df_hist[["date", "pluie_mm", "etp_mm"]].dropna().sort_values("date").copy()
+                met_daily = met_daily.set_index("date")
+                
+                met_month = met_daily.resample("MS").sum()  # cumul mensuel
+                met_month = met_month.reset_index()
+                
+                # Option : afficher seulement les 24 derniers mois par ex
+                n_months = st.slider("Nombre de mois affichés", 6, 60, 24)
+                met_month = met_month.tail(n_months)
+                
+                # --- 2) Plot barres (pluie) + ligne (ETP) ---
+                fig_met = go.Figure()
+                
+                fig_met.add_trace(
+                    go.Bar(
+                        x=met_month["date"],
+                        y=met_month["pluie_mm"],
+                        name="Précipitations (cumul mensuel)",
+                    )
+                )
+                
+                fig_met.add_trace(
+                    go.Scatter(
+                        x=met_month["date"],
+                        y=met_month["etp_mm"],
+                        mode="lines",
+                        name="ETP (cumul mensuel)",
+                        yaxis="y2",  # axe secondaire pour lisibilité
+                    )
+                )
+                
+                fig_met.update_layout(
+                    height=320,
+                    barmode="group",
+                    xaxis_title="Mois",
+                    yaxis=dict(title="Pluie (mm/mois)"),
+                    yaxis2=dict(
+                        title="ETP (mm/mois)",
+                        overlaying="y",
+                        side="right",
+                        showgrid=False,
+                    ),
+                    legend=dict(orientation="h"),
+                    margin=dict(l=20, r=20, t=40, b=20),
+                )
+                
+                st.plotly_chart(fig_met, use_container_width=True)
         
         with col2:
-        st.subheader("Alerte seuil")
-        st.write(f"Seuil actuel : **{seuil:.2f}**")
-        
-        # -----------------------------
-        # Historique (365 derniers jours)
-        # -----------------------------
-        st.markdown("### Historique des alertes")
-        last_year = df_hist[df_hist["date"] >= (df_hist["date"].max() - pd.Timedelta(days=365))].copy()
-        last_year["alerte"] = last_year["niveau_nappe"] < seuil
-        
-        alert_days = last_year[last_year["alerte"]].copy()
-        
-        if alert_days.empty:
-        
-            #st.success("Aucune occurrence sous le seuil sur les 365 derniers jours.")
-        
-            # tableau fictif pour démonstration
-            demo_hist = pd.DataFrame({
-                "Date_debut": pd.to_datetime([
-                    "2025-02-10",
-                    "2024-11-18",
-                    "2024-08-03",
-                    "2024-04-15"
-                ]),
-                "Date_fin": pd.to_datetime([
-                    "2025-02-14",
-                    "2024-11-21",
-                    "2024-08-05",
-                    "2024-04-17"
-                ]),
-                "Nombre_de_jours": [5, 4, 3, 3],
-                "Min_niveau": [
-                    seuil - 0.35,
-                    seuil - 0.22,
-                    seuil - 0.41,
-                    seuil - 0.18
-                ]
-            })
-        
-            st.caption("Exemple (données fictives) — format du tableau des alertes :")
-        
-            st.dataframe(demo_hist, use_container_width=True, height=220)
-        
-        else:
-        
-            alert_days = alert_days.sort_values("date")
-        
-            # identifier les épisodes (jours consécutifs)
-            alert_days["gap"] = alert_days["date"].diff().dt.days.ne(1).cumsum()
-        
-            occ_hist = (
-                alert_days
-                .groupby("gap")
-                .agg(
-                    Date_debut=("date", "min"),
-                    Date_fin=("date", "max"),
-                    Nombre_de_jours=("date", "count"),
-                    Min_niveau=("niveau_nappe", "min")
+            st.subheader("Alerte seuil")
+            st.write(f"Seuil actuel : **{seuil:.2f}**")
+            
+            # -----------------------------
+            # Historique (365 derniers jours)
+            # -----------------------------
+            st.markdown("### Historique des alertes")
+            last_year = df_hist[df_hist["date"] >= (df_hist["date"].max() - pd.Timedelta(days=365))].copy()
+            last_year["alerte"] = last_year["niveau_nappe"] < seuil
+            
+            alert_days = last_year[last_year["alerte"]].copy()
+            
+            if alert_days.empty:
+            
+                #st.success("Aucune occurrence sous le seuil sur les 365 derniers jours.")
+            
+                # tableau fictif pour démonstration
+                demo_hist = pd.DataFrame({
+                    "Date_debut": pd.to_datetime([
+                        "2025-02-10",
+                        "2024-11-18",
+                        "2024-08-03",
+                        "2024-04-15"
+                    ]),
+                    "Date_fin": pd.to_datetime([
+                        "2025-02-14",
+                        "2024-11-21",
+                        "2024-08-05",
+                        "2024-04-17"
+                    ]),
+                    "Nombre_de_jours": [5, 4, 3, 3],
+                    "Min_niveau": [
+                        seuil - 0.35,
+                        seuil - 0.22,
+                        seuil - 0.41,
+                        seuil - 0.18
+                    ]
+                })
+            
+                st.caption("Exemple (données fictives) — format du tableau des alertes :")
+            
+                st.dataframe(demo_hist, use_container_width=True, height=220)
+            
+            else:
+            
+                alert_days = alert_days.sort_values("date")
+            
+                # identifier les épisodes (jours consécutifs)
+                alert_days["gap"] = alert_days["date"].diff().dt.days.ne(1).cumsum()
+            
+                occ_hist = (
+                    alert_days
+                    .groupby("gap")
+                    .agg(
+                        Date_debut=("date", "min"),
+                        Date_fin=("date", "max"),
+                        Nombre_de_jours=("date", "count"),
+                        Min_niveau=("niveau_nappe", "min")
+                    )
+                    .reset_index(drop=True)
                 )
-                .reset_index(drop=True)
+            
+                occ_hist = occ_hist.sort_values("Date_debut", ascending=False)
+            
+                st.error(f"{len(occ_hist)} épisode(s) sous le seuil sur les 365 derniers jours.")
+            
+                st.dataframe(occ_hist, use_container_width=True, height=220)
+            
+            # -----------------------------
+            # Prévision (horizon sélectionné)
+            # -----------------------------
+            st.markdown("### Prévision des alertes")
+            
+            fc_sc = fc[fc["scenario"] == scenario].sort_values("date").head(horizon).copy()
+            fc_sc["alerte"] = fc_sc["niveau_nappe"] < seuil
+            
+            occ_pred = fc_sc[fc_sc["alerte"]][["date", "niveau_nappe"]].copy()
+            occ_pred = occ_pred.sort_values("date", ascending=False)
+            occ_pred["seuil"] = float(seuil)
+            occ_pred = occ_pred.rename(columns={"niveau_nappe": "niveau"})
+            
+            if occ_pred.empty:
+                #st.success("Aucune alerte prévue sur l'horizon sélectionné.")
+            
+                demo_pred = pd.DataFrame({
+                    "date": pd.to_datetime(["2026-06-05", "2026-08-08"]),
+                    "niveau": [seuil - 0.28, seuil - 0.20],
+                }).sort_values("date", ascending=False)
+            
+                st.caption(" ")
+                st.dataframe(demo_pred, use_container_width=True, height=140)
+            else:
+                st.warning(f"Alerte prévue : {len(occ_pred)} jour(s) sous le seuil.")
+                st.dataframe(occ_pred, use_container_width=True, height=220)
+            
+            # -----------------------------
+            # Export
+            # -----------------------------
+            st.markdown("### Export")
+            st.download_button(
+                "Télécharger prévision CSV",
+                data=fc_sc.to_csv(index=False).encode("utf-8"),
+                file_name=f"forecast_{scenario}_{horizon}d.csv",
+                mime="text/csv",
             )
-        
-            occ_hist = occ_hist.sort_values("Date_debut", ascending=False)
-        
-            st.error(f"{len(occ_hist)} épisode(s) sous le seuil sur les 365 derniers jours.")
-        
-            st.dataframe(occ_hist, use_container_width=True, height=220)
-        
-        # -----------------------------
-        # Prévision (horizon sélectionné)
-        # -----------------------------
-        st.markdown("### Prévision des alertes")
-        
-        fc_sc = fc[fc["scenario"] == scenario].sort_values("date").head(horizon).copy()
-        fc_sc["alerte"] = fc_sc["niveau_nappe"] < seuil
-        
-        occ_pred = fc_sc[fc_sc["alerte"]][["date", "niveau_nappe"]].copy()
-        occ_pred = occ_pred.sort_values("date", ascending=False)
-        occ_pred["seuil"] = float(seuil)
-        occ_pred = occ_pred.rename(columns={"niveau_nappe": "niveau"})
-        
-        if occ_pred.empty:
-            #st.success("Aucune alerte prévue sur l'horizon sélectionné.")
-        
-            demo_pred = pd.DataFrame({
-                "date": pd.to_datetime(["2026-06-05", "2026-08-08"]),
-                "niveau": [seuil - 0.28, seuil - 0.20],
-            }).sort_values("date", ascending=False)
-        
-            st.caption(" ")
-            st.dataframe(demo_pred, use_container_width=True, height=140)
-        else:
-            st.warning(f"Alerte prévue : {len(occ_pred)} jour(s) sous le seuil.")
-            st.dataframe(occ_pred, use_container_width=True, height=220)
-        
-        # -----------------------------
-        # Export
-        # -----------------------------
-        st.markdown("### Export")
-        st.download_button(
-            "Télécharger prévision CSV",
-            data=fc_sc.to_csv(index=False).encode("utf-8"),
-            file_name=f"forecast_{scenario}_{horizon}d.csv",
-            mime="text/csv",
-        )
         pass
 
 with tab2:
