@@ -123,7 +123,56 @@ with col1:
     if show_meteo:
         st.subheader("Météo — pluie et ETP ")
         met = df_hist.set_index("date")[["pluie_mm", "etp_mm"]]
-        st.line_chart(met, height=240)
+        st.subheader("Météo — cumul mensuel pluie + ETP")
+        
+        # --- 1) Préparer une série mensuelle (cumul par mois) ---
+        met_daily = df_hist[["date", "pluie_mm", "etp_mm"]].dropna().sort_values("date").copy()
+        met_daily = met_daily.set_index("date")
+        
+        met_month = met_daily.resample("MS").sum()  # cumul mensuel
+        met_month = met_month.reset_index()
+        
+        # Option : afficher seulement les 24 derniers mois par ex
+        n_months = st.slider("Nombre de mois affichés", 6, 60, 24)
+        met_month = met_month.tail(n_months)
+        
+        # --- 2) Plot barres (pluie) + ligne (ETP) ---
+        fig_met = go.Figure()
+        
+        fig_met.add_trace(
+            go.Bar(
+                x=met_month["date"],
+                y=met_month["pluie_mm"],
+                name="Précipitations (cumul mensuel)",
+            )
+        )
+        
+        fig_met.add_trace(
+            go.Scatter(
+                x=met_month["date"],
+                y=met_month["etp_mm"],
+                mode="lines",
+                name="ETP (cumul mensuel)",
+                yaxis="y2",  # axe secondaire pour lisibilité
+            )
+        )
+        
+        fig_met.update_layout(
+            height=320,
+            barmode="group",
+            xaxis_title="Mois",
+            yaxis=dict(title="Pluie (mm/mois)"),
+            yaxis2=dict(
+                title="ETP (mm/mois)",
+                overlaying="y",
+                side="right",
+                showgrid=False,
+            ),
+            legend=dict(orientation="h"),
+            margin=dict(l=20, r=20, t=40, b=20),
+        )
+        
+        st.plotly_chart(fig_met, use_container_width=True)
 
 with col2:
     st.subheader("Alerte seuil")
