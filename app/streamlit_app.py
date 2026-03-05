@@ -188,7 +188,7 @@ with col2:
     
     if alert_days.empty:
 
-        st.success("Aucune occurrence sous le seuil sur les 365 derniers jours.")
+        #st.success("Aucune occurrence sous le seuil sur les 365 derniers jours.")
     
         # tableau fictif pour démonstration
         demo_hist = pd.DataFrame({
