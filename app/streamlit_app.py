@@ -37,10 +37,10 @@ seuil = st.sidebar.number_input(
     step=0.1
 )
 
-show_old_seuil = st.sidebar.checkbox("Afficher ancien seuil (fictif)", value=True)
+show_old_seuil = st.sidebar.checkbox("Afficher ancien seuil ", value=True)
 
 old_seuil = st.sidebar.number_input(
-    "Ancien seuil (fictif)",
+    "Ancien seuil",
     value=float(seuil + 1.0),   # exemple : 1m au-dessus du seuil actuel
     step=0.1,
     disabled=not show_old_seuil
@@ -96,7 +96,7 @@ with col1:
         fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["medium"], mode="lines", name="medium"))
 
     # 3) Seuil
-    fig.add_hline(y=seuil, line_dash="dash", annotation_text="Seuil", annotation_position="top left")
+    fig.add_hline(y=seuil, line_dash="dash", annotation_text="Seuil actuel", annotation_position="top left")
 
     if show_old_seuil:
         fig.add_hline(
@@ -105,7 +105,7 @@ with col1:
             line_dash="dash",
             opacity=0.25,
             line_width=2,
-            annotation_text="Ancien seuil (fictif)",
+            annotation_text="Ancien seuil",
             annotation_position="top left",
         )
     
