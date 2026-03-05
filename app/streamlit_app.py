@@ -427,19 +427,17 @@ with tab2:
     # -------- ÉTAT DE LA NAPPE (dans la page) --------
     st.markdown("### État de la nappe")
 
-    colA, colB = st.columns(2)
+    st.markdown("### État de la nappe")
 
-    with colA:
-        if is_safe:
-            st.success("🟢 Safe level")
-
-    with colB:
-        if not is_safe:
-            st.error("🔴 Groundwater critical level reached")
-
+    if is_safe:
+        st.success("🟢 Safe level")
+    else:
+        st.error("🔴 Groundwater critical level reached")
+    
     st.caption(
         f"Date simulée : {now_date.date()} — Niveau : {current_level:.2f} — Seuil : {fict_seuil:.2f}"
     )
+
 
     # Progress
     st.progress((st.session_state.sim_idx + 1) / len(sim_dates))
