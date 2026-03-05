@@ -142,7 +142,7 @@ with col2:
     occ_hist = occ_hist.rename(columns={"niveau_nappe": "niveau"})
 
     if occ_hist.empty:
-        st.success("Aucune occurrence sous le seuil sur les 365 derniers jours.")
+        #st.success("Aucune occurrence sous le seuil sur les 365 derniers jours.")
 
         demo_hist = pd.DataFrame({
             "date": pd.to_datetime(["2026-01-12", "2026-01-10", "2026-01-08"]),
@@ -170,7 +170,7 @@ with col2:
     occ_pred = occ_pred.rename(columns={"niveau_nappe": "niveau"})
 
     if occ_pred.empty:
-        st.success("Aucune alerte prévue sur l'horizon sélectionné.")
+        #st.success("Aucune alerte prévue sur l'horizon sélectionné.")
 
         demo_pred = pd.DataFrame({
             "date": pd.to_datetime(["2026-03-05", "2026-03-08"]),
