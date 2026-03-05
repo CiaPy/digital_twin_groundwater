@@ -135,25 +135,36 @@ with col2:
     st.markdown("### Historique des alertes")
     last_year = df_hist[df_hist["date"] >= (df_hist["date"].max() - pd.Timedelta(days=365))].copy()
     last_year["alerte"] = last_year["niveau_nappe"] < seuil
-
-    occ_hist = last_year[last_year["alerte"]][["date", "niveau_nappe"]].copy()
-    occ_hist = occ_hist.sort_values("date", ascending=False)
-    occ_hist["seuil"] = float(seuil)
-    occ_hist = occ_hist.rename(columns={"niveau_nappe": "niveau"})
-
-    if occ_hist.empty:
-        #st.success("Aucune occurrence sous le seuil sur les 365 derniers jours.")
-
-        demo_hist = pd.DataFrame({
-            "date": pd.to_datetime(["2026-01-12", "2026-01-10", "2026-01-08"]),
-            "niveau": [seuil - 0.25, seuil - 0.12, seuil - 0.40],
-            "seuil": [float(seuil), float(seuil), float(seuil)]
-        }).sort_values("date", ascending=False)
-
-        st.caption(" ")
-        st.dataframe(demo_hist, use_container_width=True, height=160)
+    
+    alert_days = last_year[last_year["alerte"]].copy()
+    
+    if alert_days.empty:
+    
+        st.success("Aucune occurrence sous le seuil sur les 365 derniers jours.")
+    
     else:
-        st.error(f"{len(occ_hist)} jour(s) sous le seuil sur les 365 derniers jours.")
+    
+        alert_days = alert_days.sort_values("date")
+    
+        # identifier les épisodes (jours consécutifs)
+        alert_days["gap"] = alert_days["date"].diff().dt.days.ne(1).cumsum()
+    
+        occ_hist = (
+            alert_days
+            .groupby("gap")
+            .agg(
+                Date_debut=("date", "min"),
+                Date_fin=("date", "max"),
+                Nombre_de_jours=("date", "count"),
+                Min_niveau=("niveau_nappe", "min")
+            )
+            .reset_index(drop=True)
+        )
+    
+        occ_hist = occ_hist.sort_values("Date_debut", ascending=False)
+    
+        st.error(f"{len(occ_hist)} épisode(s) sous le seuil sur les 365 derniers jours.")
+    
         st.dataframe(occ_hist, use_container_width=True, height=220)
 
     # -----------------------------
