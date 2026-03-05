@@ -37,6 +37,16 @@ seuil = st.sidebar.number_input(
     step=0.1
 )
 
+show_old_seuil = st.sidebar.checkbox("Afficher ancien seuil (fictif)", value=True)
+
+old_seuil = st.sidebar.number_input(
+    "Ancien seuil (fictif)",
+    value=float(seuil + 1.0),   # exemple : 1m au-dessus du seuil actuel
+    step=0.1,
+    disabled=not show_old_seuil
+)
+
+
 show_meteo = st.sidebar.checkbox("Afficher pluie/ETP", value=False)
 
 # ---- Prepare data ----
@@ -88,6 +98,17 @@ with col1:
     # 3) Seuil
     fig.add_hline(y=seuil, line_dash="dash", annotation_text="Seuil", annotation_position="top left")
 
+    if show_old_seuil:
+        fig.add_hline(
+            y=old_seuil,
+            line_color="red",
+            line_dash="dash",
+            opacity=0.25,
+            line_width=2,
+            annotation_text="Ancien seuil (fictif)",
+            annotation_position="top left",
+        )
+    
     fig.update_layout(
         height=520,
         xaxis_title="Date",
