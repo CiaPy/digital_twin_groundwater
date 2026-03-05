@@ -450,33 +450,32 @@ with tab1:
 with tab2:
     st.subheader("Simulation temps réel — 1 an (seuil fictif)")
 
-    # --- Données daily ---
     df_daily = df[["date", "niveau_nappe"]].dropna().copy().sort_values("date")
     df_daily["date"] = pd.to_datetime(df_daily["date"])
 
-    # --- Fenêtre simulée : dernière année disponible ---
-    end_date = df_daily["date"].max().normalize()
-    start_date = (end_date - pd.Timedelta(days=365)).normalize()
+    # Fenêtre fixée : à partir de Mai 2025
+    start_date = pd.Timestamp("2025-05-01")
+    end_date = start_date + pd.Timedelta(days=365)
+    end_date = min(end_date, df_daily["date"].max().normalize())
 
     year = df_daily[(df_daily["date"] >= start_date) & (df_daily["date"] <= end_date)].copy()
     year = year.sort_values("date")
 
-    # Grille quotidienne (au cas où il manque des jours)
     sim_dates = pd.date_range(start_date, end_date, freq="D")
 
-    # --- Seuil fictif FIXE (exemple) ---
-    # Tu peux choisir ce que tu veux : quantile, moyenne-écart type, valeur fixe…
-    fict_seuil = float(year["niveau_nappe"].quantile(0.15))  # exemple
+    # Seuil fictif FIXE
+    fict_seuil = 114.2
     st.sidebar.markdown("### Seuil fictif (simulation)")
     st.sidebar.caption(f"Seuil : **{fict_seuil:.2f}**")
 
-    # --- Session state ---
+    # Session state
     if "sim_idx" not in st.session_state:
         st.session_state.sim_idx = 0
     if "playing" not in st.session_state:
         st.session_state.playing = False
 
-    # --- Contrôles ---
+    # Controls
+    import time
     c1, c2, c3, c4 = st.columns([1, 1, 1, 2])
     with c1:
         if st.button("▶️ Play"):
@@ -494,7 +493,6 @@ with tab2:
     with c4:
         speed = st.slider("Vitesse (sec / jour)", 0.01, 0.50, 0.06, 0.01)
 
-    # Slider manuel (optionnel)
     st.session_state.sim_idx = st.slider(
         "Jour simulé",
         0, len(sim_dates) - 1,
@@ -503,57 +501,47 @@ with tab2:
 
     now_date = sim_dates[st.session_state.sim_idx]
 
-    # --- Niveau "actuel" : dernière valeur mesurée <= now_date dans l'année ---
     up_to_now = year[year["date"] <= now_date]
     if up_to_now.empty:
-        st.warning("Pas de donnée avant cette date dans l'année simulée.")
+        st.warning("Pas de donnée avant cette date dans la fenêtre simulée.")
         st.stop()
 
     current_level = float(up_to_now["niveau_nappe"].iloc[-1])
     is_safe = current_level > fict_seuil
 
-    # --- Sidebar : carte état (bascule vert/rouge) ---
+    # Sidebar state card
     sidebar_etat(is_safe)
     st.sidebar.caption(f"Date simulée : **{now_date.date()}**")
     st.sidebar.caption(f"Niveau : **{current_level:.2f}**")
 
-    # --- Progress ---
+    # Progress
     st.progress((st.session_state.sim_idx + 1) / len(sim_dates))
     st.caption(f"{now_date.date()} — niveau {current_level:.2f} — seuil {fict_seuil:.2f}")
 
-    # --- Graphe : uniquement l'année + l'avancement ---
-    # 1) courbe de l'année complète (gris)
+    # Plot : uniquement cette fenêtre 1 an
     fig = go.Figure()
+
     fig.add_trace(go.Scatter(
         x=year["date"], y=year["niveau_nappe"],
-        mode="lines",
-        name="Année (référence)",
-        opacity=0.25
+        mode="lines", name="Année (référence)", opacity=0.25
     ))
-
-    # 2) courbe jusqu'à la date simulée (bleu)
     fig.add_trace(go.Scatter(
         x=up_to_now["date"], y=up_to_now["niveau_nappe"],
-        mode="lines",
-        name="Avancement",
+        mode="lines", name="Avancement"
     ))
-
-    # 3) point “aujourd’hui simulé”
     fig.add_trace(go.Scatter(
         x=[up_to_now["date"].iloc[-1]],
         y=[up_to_now["niveau_nappe"].iloc[-1]],
-        mode="markers",
-        name="Aujourd’hui",
+        mode="markers", name="Aujourd’hui",
         marker=dict(size=10)
     ))
 
-    # 4) seuil fictif
     fig.add_hline(
         y=fict_seuil,
         line_dash="dot",
         line_color="red",
         opacity=0.35,
-        annotation_text="Seuil fictif",
+        annotation_text="Seuil fictif (114.2)",
         annotation_position="top left"
     )
 
@@ -566,18 +554,7 @@ with tab2:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    # --- (Optionnel) afficher les dates de passage sous/au-dessus du seuil ---
-    # Détection des bascules sur l'année (pour information)
-    tmp = year.copy()
-    tmp["below"] = tmp["niveau_nappe"] <= fict_seuil
-    tmp["switch"] = tmp["below"].ne(tmp["below"].shift())
-    switches = tmp[tmp["switch"]][["date", "below", "niveau_nappe"]].copy()
-
-    with st.expander("Voir les dates de bascule seuil (optionnel)"):
-        switches["etat"] = switches["below"].map({True: "CRITICAL", False: "SAFE"})
-        st.dataframe(switches[["date", "etat", "niveau_nappe"]], use_container_width=True, height=200)
-
-    # --- AUTO-ADVANCE (temps réel) ---
+    # Auto-advance
     if st.session_state.playing:
         if st.session_state.sim_idx >= len(sim_dates) - 1:
             st.session_state.playing = False
