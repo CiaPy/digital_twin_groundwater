@@ -364,8 +364,8 @@ with tab1:
     # COLONNE 3 — Alertes + Export
     # =========================================================
     with col_alert:
-        st.subheader("Alertes")
-        st.write(f"Seuil actuel : **{seuil:.2f}**")
+        #st.subheader("Alertes")
+        #st.write(f"Seuil actuel : **{seuil:.2f}**")
 
         # --- Historique des alertes ---
         st.markdown("### Historique des alertes")
