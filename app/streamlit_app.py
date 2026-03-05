@@ -4,7 +4,16 @@ import plotly.graph_objects as go
 import time
 
 st.set_page_config(page_title="Digital Twin Nappe", layout="wide")
+st.markdown("""
+<style>
 
+button[data-baseweb="tab"] {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+</style>
+""", unsafe_allow_html=True)
 st.title("Digital Twin — Niveau de nappe ")
 st.caption("Piézomètre Hub'Eau + météo SAFRAN (pluie/ETP) + régression linéaire + scénarios")
 
