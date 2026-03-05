@@ -525,10 +525,33 @@ with tab2:
         x=year["date"], y=year["niveau_nappe"],
         mode="lines", name="Année (référence)", opacity=0.25
     ))
+
+    # Séparer les valeurs selon le seuil
+    above = up_to_now.copy()
+    below = up_to_now.copy()
+    
+    above["niveau_plot"] = above["niveau_nappe"].where(above["niveau_nappe"] > fict_seuil)
+    below["niveau_plot"] = below["niveau_nappe"].where(below["niveau_nappe"] <= fict_seuil)
+    
+    # courbe verte (safe)
     fig.add_trace(go.Scatter(
-        x=up_to_now["date"], y=up_to_now["niveau_nappe"],
-        mode="lines", name="Avancement"
+        x=above["date"],
+        y=above["niveau_plot"],
+        mode="lines",
+        name="Safe level",
+        line=dict(color="green", width=3)
     ))
+    
+    # courbe rouge (alerte)
+    fig.add_trace(go.Scatter(
+        x=below["date"],
+        y=below["niveau_plot"],
+        mode="lines",
+        name="Critical level",
+        line=dict(color="red", width=3)
+    ))
+
+    
     fig.add_trace(go.Scatter(
         x=[up_to_now["date"].iloc[-1]],
         y=[up_to_now["niveau_nappe"].iloc[-1]],
