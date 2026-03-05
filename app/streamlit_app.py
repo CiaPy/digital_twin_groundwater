@@ -8,7 +8,7 @@ st.markdown("""
 <style>
 
 button[data-baseweb="tab"] {
-    font-size: 20px;
+    font-size: 50px;
     font-weight: 600;
 }
 
