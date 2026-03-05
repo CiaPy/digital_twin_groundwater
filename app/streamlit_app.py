@@ -236,7 +236,7 @@ with tab1:
     # COLONNE 2 — Graphique
     # =========================================================
     with col_graph:
-        st.subheader("Historique + Prévisions")
+        st.subheader("Groundwater level monitoring and forecast")
 
         df_hist_plot = df_hist[["date", "niveau_nappe"]].dropna().sort_values("date")
 
