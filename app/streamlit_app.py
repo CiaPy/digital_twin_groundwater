@@ -139,8 +139,35 @@ with col2:
     alert_days = last_year[last_year["alerte"]].copy()
     
     if alert_days.empty:
-    
+
         st.success("Aucune occurrence sous le seuil sur les 365 derniers jours.")
+    
+        # tableau fictif pour démonstration
+        demo_hist = pd.DataFrame({
+            "Date_debut": pd.to_datetime([
+                "2025-02-10",
+                "2024-11-18",
+                "2024-08-03",
+                "2024-04-15"
+            ]),
+            "Date_fin": pd.to_datetime([
+                "2025-02-14",
+                "2024-11-21",
+                "2024-08-05",
+                "2024-04-17"
+            ]),
+            "Nombre_de_jours": [5, 4, 3, 3],
+            "Min_niveau": [
+                seuil - 0.35,
+                seuil - 0.22,
+                seuil - 0.41,
+                seuil - 0.18
+            ]
+        })
+
+        st.caption("Exemple (données fictives) — format du tableau des alertes :")
+    
+        st.dataframe(demo_hist, use_container_width=True, height=220)
     
     else:
     
