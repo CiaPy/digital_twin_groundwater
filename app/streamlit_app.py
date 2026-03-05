@@ -62,52 +62,79 @@ fc_sc = fc[fc["scenario"] == scenario].sort_values("date").head(horizon).copy()
 
 st.sidebar.markdown("### État de pompage")
 
-green_opacity = "1" if is_safe else "0.25"
-red_opacity = "1" if not is_safe else "0.25"
+current_level = df_hist["niveau_nappe"].iloc[-1]
+is_safe = current_level > seuil
+
+green_opacity = 1.0 if is_safe else 0.25
+red_opacity = 1.0 if (not is_safe) else 0.25
 
 st.sidebar.markdown(f"""
-<div style="display:flex; flex-direction:column; gap:10px">
+<style>
+/* Pastille 3D */
+.dot {{
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+  flex: 0 0 14px;
+  box-shadow:
+    inset -2px -3px 6px rgba(0,0,0,0.35),
+    inset 2px 2px 6px rgba(255,255,255,0.25),
+    0 2px 6px rgba(0,0,0,0.35);
+}}
 
-<div style="
-background-color: rgba(34,197,94,{green_opacity});
-padding:12px;
-border-radius:10px;
-color:white;
-font-weight:600;
-display:flex;
-align-items:center;
-gap:8px">
+.dot::after {{
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.65); /* highlight */
+  filter: blur(0.2px);
+}}
 
-<span style="
-width:12px;
-height:12px;
-background-color:limegreen;
-border-radius:50%;
-display:inline-block"></span>
+.dot-green {{
+  background: radial-gradient(circle at 30% 30%, #a7ffb5 0%, #22c55e 35%, #0f7a35 100%);
+}}
 
-Safe level
-</div>
+.dot-red {{
+  background: radial-gradient(circle at 30% 30%, #ffb4b4 0%, #ef4444 35%, #8a1a1a 100%);
+}}
 
+/* Cards */
+.card {{
+  padding: 14px;
+  border-radius: 14px;
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: white;
+}}
 
-<div style="
-background-color: rgba(239,68,68,{red_opacity});
-padding:12px;
-border-radius:10px;
-color:white;
-font-weight:600;
-display:flex;
-align-items:center;
-gap:8px">
+.card-green {{
+  background: rgba(34,197,94,{green_opacity});
+}}
 
-<span style="
-width:12px;
-height:12px;
-background-color:red;
-border-radius:50%;
-display:inline-block"></span>
+.card-red {{
+  background: rgba(239,68,68,{red_opacity});
+}}
+</style>
 
-Groundwater critical level reached
-</div>
+<div style="display:flex; flex-direction:column; gap:12px">
+
+  <div class="card card-green">
+    <span class="dot dot-green"></span>
+    <span>Safe level</span>
+  </div>
+
+  <div class="card card-red">
+    <span class="dot dot-red"></span>
+    <span>Groundwater critical level reached</span>
+  </div>
 
 </div>
 """, unsafe_allow_html=True)
