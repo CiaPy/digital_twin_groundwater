@@ -384,6 +384,13 @@ with tab2:
 
     import time
 
+    if "alert_history" not in st.session_state:
+        st.session_state.alert_history = []
+    
+    if "current_alert" not in st.session_state:
+        st.session_state.current_alert = None
+
+    
     # Controls
     c1, c2, c3, c4 = st.columns([1,1,1,2])
 
@@ -401,6 +408,8 @@ with tab2:
         if st.button("🔄 Reset"):
             st.session_state.sim_idx = 0
             st.session_state.playing = False
+            st.session_state.alert_history = []
+            st.session_state.current_alert = None
             st.rerun()
 
     with c4:
@@ -424,9 +433,35 @@ with tab2:
     current_level = float(up_to_now["niveau_nappe"].iloc[-1])
     is_safe = current_level > fict_seuil
 
-    # -------- ÉTAT DE LA NAPPE (dans la page) --------
-    st.markdown("### État de la nappe")
+        
+    if not is_safe:
+        if st.session_state.current_alert is None:
+            # début épisode
+            st.session_state.current_alert = {
+                "Date_debut": now_date,
+                "Min_niveau": current_level
+            }
+        else:
+            # mise à jour niveau min
+            st.session_state.current_alert["Min_niveau"] = min(
+                st.session_state.current_alert["Min_niveau"],
+                current_level
+            )
+    
+    else:
+        # si on sort d'un épisode
+        if st.session_state.current_alert is not None:
+            episode = st.session_state.current_alert.copy()
+            episode["Date_fin"] = now_date
+            episode["Nombre_de_jours"] = (
+                episode["Date_fin"] - episode["Date_debut"]
+            ).days + 1
+    
+            st.session_state.alert_history.append(episode)
+    
+            st.session_state.current_alert = None
 
+    # -------- ÉTAT DE LA NAPPE (dans la page) --------
     st.markdown("### État de la nappe")
 
     if is_safe:
@@ -502,6 +537,21 @@ with tab2:
 
     st.plotly_chart(fig, use_container_width=True)
 
+    st.markdown("### Historique des alertes")
+
+    if len(st.session_state.alert_history) == 0:
+        st.info("Aucun passage sous le seuil pour le moment.")
+    else:
+        df_alerts = pd.DataFrame(st.session_state.alert_history)
+        df_alerts = df_alerts.sort_values("Date_debut", ascending=False)
+    
+        st.dataframe(
+            df_alerts,
+            use_container_width=True,
+            height=220
+        )
+
+    
     # -------- AUTO PLAY --------
     if st.session_state.playing:
         if st.session_state.sim_idx >= len(sim_dates) - 1:
