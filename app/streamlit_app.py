@@ -132,8 +132,8 @@ with col1:
         met_month = met_month.reset_index()
         
         # Option : afficher seulement les 24 derniers mois par ex
-        #n_months = st.slider("Nombre de mois affichés", 6, 60, 24)
-        #met_month = met_month.tail(n_months)
+        n_months = st.slider("Nombre de mois affichés", 6, 60, 24)
+        met_month = met_month.tail(n_months)
         
         # --- 2) Plot barres (pluie) + ligne (ETP) ---
         fig_met = go.Figure()
