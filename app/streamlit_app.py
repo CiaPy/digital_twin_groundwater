@@ -159,7 +159,7 @@ with col2:
     # -----------------------------
     # Prévision (horizon sélectionné)
     # -----------------------------
-    st.markdown("### Prévision")
+    st.markdown("### Prévision des alertes")
 
     fc_sc = fc[fc["scenario"] == scenario].sort_values("date").head(horizon).copy()
     fc_sc["alerte"] = fc_sc["niveau_nappe"] < seuil
