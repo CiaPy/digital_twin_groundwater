@@ -66,7 +66,7 @@ current_level = df_hist["niveau_nappe"].iloc[-1]
 is_safe = current_level > seuil
 
 green_opacity = 1.0 if is_safe else 0.25
-red_opacity = 1.0 if (not is_safe) else 0.25
+red_opacity = 1.0 if (not is_safe) else 0.40
 
 st.sidebar.markdown(f"""
 <style>
