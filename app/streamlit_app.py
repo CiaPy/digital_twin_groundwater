@@ -49,7 +49,7 @@ fc_sc = fc[fc["scenario"] == scenario].sort_values("date").head(horizon).copy()
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    st.subheader("Historique + Prévisions (un seul graphique)")
+    st.subheader("Historique + Prévisions")
 
     # Historique
     df_hist_plot = df_hist[["date", "niveau_nappe"]].dropna().sort_values("date")
@@ -100,7 +100,7 @@ with col1:
 
     # Option météo
     if show_meteo:
-        st.subheader("Météo — pluie et ETP (historique)")
+        st.subheader("Météo — pluie et ETP ")
         met = df_hist.set_index("date")[["pluie_mm", "etp_mm"]]
         st.line_chart(met, height=240)
 
@@ -138,7 +138,7 @@ with col2:
     # -----------------------------
     # Prévision (horizon sélectionné)
     # -----------------------------
-    st.markdown("### Prévision (horizon sélectionné)")
+    st.markdown("### Prévision")
 
     fc_sc = fc[fc["scenario"] == scenario].sort_values("date").head(horizon).copy()
     fc_sc["alerte"] = fc_sc["niveau_nappe"] < seuil
