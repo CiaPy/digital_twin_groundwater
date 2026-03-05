@@ -346,10 +346,8 @@ with tab2:
 
     sim_dates = pd.date_range(start_date, end_date, freq="D")
 
-    # Seuil fictif FIXE
+    # Seuil fictif
     fict_seuil = 114.2
-    st.sidebar.markdown("### Seuil fictif (simulation)")
-    st.sidebar.caption(f"Seuil : **{fict_seuil:.2f}**")
 
     # Session state
     if "sim_idx" not in st.session_state:
@@ -357,34 +355,41 @@ with tab2:
     if "playing" not in st.session_state:
         st.session_state.playing = False
 
-    # Controls
     import time
-    c1, c2, c3, c4 = st.columns([1, 1, 1, 2])
+
+    # Controls
+    c1, c2, c3, c4 = st.columns([1,1,1,2])
+
     with c1:
         if st.button("▶️ Play"):
             st.session_state.playing = True
             st.rerun()
+
     with c2:
         if st.button("⏸ Pause"):
             st.session_state.playing = False
             st.rerun()
+
     with c3:
         if st.button("🔄 Reset"):
             st.session_state.sim_idx = 0
             st.session_state.playing = False
             st.rerun()
+
     with c4:
         speed = st.slider("Vitesse (sec / jour)", 0.01, 0.50, 0.06, 0.01)
 
     st.session_state.sim_idx = st.slider(
         "Jour simulé",
-        0, len(sim_dates) - 1,
+        0,
+        len(sim_dates) - 1,
         st.session_state.sim_idx
     )
 
     now_date = sim_dates[st.session_state.sim_idx]
 
     up_to_now = year[year["date"] <= now_date]
+
     if up_to_now.empty:
         st.warning("Pas de donnée avant cette date dans la fenêtre simulée.")
         st.stop()
@@ -392,42 +397,43 @@ with tab2:
     current_level = float(up_to_now["niveau_nappe"].iloc[-1])
     is_safe = current_level > fict_seuil
 
-    # ---- Etat de la nappe (dans la page, pas sidebar) ----
+    # -------- ÉTAT DE LA NAPPE (dans la page) --------
     st.markdown("### État de la nappe")
-    
+
     colA, colB = st.columns(2)
-    
+
     with colA:
         if is_safe:
             st.success("🟢 Safe level")
-    
+
     with colB:
         if not is_safe:
             st.error("🔴 Groundwater critical level reached")
-    
-    st.caption(f"Date simulée : {now_date.date()} — Niveau : {current_level:.2f} — Seuil : {fict_seuil:.2f}")
 
+    st.caption(
+        f"Date simulée : {now_date.date()} — Niveau : {current_level:.2f} — Seuil : {fict_seuil:.2f}"
+    )
 
     # Progress
-    #st.progress((st.session_state.sim_idx + 1) / len(sim_dates))
-    #st.caption(f"{now_date.date()} — niveau {current_level:.2f} — seuil {fict_seuil:.2f}")
+    st.progress((st.session_state.sim_idx + 1) / len(sim_dates))
 
-    # Plot : uniquement cette fenêtre 1 an
+    # -------- PLOT --------
     fig = go.Figure()
 
     fig.add_trace(go.Scatter(
-        x=year["date"], y=year["niveau_nappe"],
-        mode="lines", name="Année (référence)", opacity=0.25
+        x=year["date"],
+        y=year["niveau_nappe"],
+        mode="lines",
+        name="Année (référence)",
+        opacity=0.25
     ))
 
-    # Séparer les valeurs selon le seuil
     above = up_to_now.copy()
     below = up_to_now.copy()
-    
+
     above["niveau_plot"] = above["niveau_nappe"].where(above["niveau_nappe"] > fict_seuil)
     below["niveau_plot"] = below["niveau_nappe"].where(below["niveau_nappe"] <= fict_seuil)
-    
-    # courbe verte (safe)
+
     fig.add_trace(go.Scatter(
         x=above["date"],
         y=above["niveau_plot"],
@@ -435,8 +441,7 @@ with tab2:
         name="Safe level",
         line=dict(color="green", width=3)
     ))
-    
-    # courbe rouge (alerte)
+
     fig.add_trace(go.Scatter(
         x=below["date"],
         y=below["niveau_plot"],
@@ -445,11 +450,11 @@ with tab2:
         line=dict(color="red", width=3)
     ))
 
-    
     fig.add_trace(go.Scatter(
         x=[up_to_now["date"].iloc[-1]],
         y=[up_to_now["niveau_nappe"].iloc[-1]],
-        mode="markers", name="Aujourd’hui",
+        mode="markers",
+        name="Aujourd’hui",
         marker=dict(size=10)
     ))
 
@@ -469,9 +474,10 @@ with tab2:
         legend=dict(orientation="h"),
         margin=dict(l=20, r=20, t=40, b=20),
     )
+
     st.plotly_chart(fig, use_container_width=True)
 
-    # Auto-advance
+    # -------- AUTO PLAY --------
     if st.session_state.playing:
         if st.session_state.sim_idx >= len(sim_dates) - 1:
             st.session_state.playing = False
