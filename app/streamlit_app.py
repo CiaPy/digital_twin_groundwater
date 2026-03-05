@@ -448,14 +448,27 @@ with tab1:
         pass
 
 with tab2:
-    st.subheader("Simulation temps réel (1 an)")
+    st.subheader("Simulation temps réel — 1 an (seuil fictif)")
 
-    # Base data triée
-    df_daily = df[["date", "niveau_nappe", "pluie_mm", "etp_mm"]].dropna(subset=["niveau_nappe"]).copy()
-    df_daily = df_daily.sort_values("date")
+    # --- Données daily ---
+    df_daily = df[["date", "niveau_nappe"]].dropna().copy().sort_values("date")
+    df_daily["date"] = pd.to_datetime(df_daily["date"])
+
+    # --- Fenêtre simulée : dernière année disponible ---
     end_date = df_daily["date"].max().normalize()
     start_date = (end_date - pd.Timedelta(days=365)).normalize()
+
+    year = df_daily[(df_daily["date"] >= start_date) & (df_daily["date"] <= end_date)].copy()
+    year = year.sort_values("date")
+
+    # Grille quotidienne (au cas où il manque des jours)
     sim_dates = pd.date_range(start_date, end_date, freq="D")
+
+    # --- Seuil fictif FIXE (exemple) ---
+    # Tu peux choisir ce que tu veux : quantile, moyenne-écart type, valeur fixe…
+    fict_seuil = float(year["niveau_nappe"].quantile(0.15))  # exemple
+    st.sidebar.markdown("### Seuil fictif (simulation)")
+    st.sidebar.caption(f"Seuil : **{fict_seuil:.2f}**")
 
     # --- Session state ---
     if "sim_idx" not in st.session_state:
@@ -463,125 +476,108 @@ with tab2:
     if "playing" not in st.session_state:
         st.session_state.playing = False
 
-    # --- Controls ---
+    # --- Contrôles ---
     c1, c2, c3, c4 = st.columns([1, 1, 1, 2])
-
     with c1:
         if st.button("▶️ Play"):
             st.session_state.playing = True
             st.rerun()
-
     with c2:
         if st.button("⏸ Pause"):
             st.session_state.playing = False
             st.rerun()
-
     with c3:
         if st.button("🔄 Reset"):
             st.session_state.sim_idx = 0
             st.session_state.playing = False
             st.rerun()
-
     with c4:
-        speed = st.slider("Vitesse (sec / jour simulé)", 0.01, 0.50, 0.08, 0.01)
+        speed = st.slider("Vitesse (sec / jour)", 0.01, 0.50, 0.06, 0.01)
 
-    # --- Current simulated date ---
-    st.session_state.sim_idx = min(st.session_state.sim_idx, len(sim_dates) - 1)
+    # Slider manuel (optionnel)
+    st.session_state.sim_idx = st.slider(
+        "Jour simulé",
+        0, len(sim_dates) - 1,
+        st.session_state.sim_idx
+    )
+
     now_date = sim_dates[st.session_state.sim_idx]
 
-    # Niveau "actuel" = dernière valeur <= now_date
-    df_up_to_now = df_daily[df_daily["date"] <= now_date]
-    current_level = float(df_up_to_now["niveau_nappe"].iloc[-1])
-    is_safe = current_level > seuil
+    # --- Niveau "actuel" : dernière valeur mesurée <= now_date dans l'année ---
+    up_to_now = year[year["date"] <= now_date]
+    if up_to_now.empty:
+        st.warning("Pas de donnée avant cette date dans l'année simulée.")
+        st.stop()
 
-    # Sidebar: pastilles + infos (ça se met à jour à chaque rerun)
+    current_level = float(up_to_now["niveau_nappe"].iloc[-1])
+    is_safe = current_level > fict_seuil
+
+    # --- Sidebar : carte état (bascule vert/rouge) ---
     sidebar_etat(is_safe)
     st.sidebar.caption(f"Date simulée : **{now_date.date()}**")
-    st.sidebar.caption(f"Niveau : **{current_level:.2f}**  |  Seuil : **{seuil:.2f}**")
+    st.sidebar.caption(f"Niveau : **{current_level:.2f}**")
 
     # --- Progress ---
-    progress = (st.session_state.sim_idx + 1) / len(sim_dates)
-    st.progress(progress)
-    st.caption(f"Jour {st.session_state.sim_idx + 1}/{len(sim_dates)} — {now_date.date()}")
+    st.progress((st.session_state.sim_idx + 1) / len(sim_dates))
+    st.caption(f"{now_date.date()} — niveau {current_level:.2f} — seuil {fict_seuil:.2f}")
 
-    # --- Graph (historique jusqu'à now_date + prévisions) ---
-    fc_future = fc[fc["date"] > now_date].sort_values("date").groupby("scenario").head(horizon)
-    pivot = (fc_future.pivot_table(index="date", columns="scenario", values="niveau_nappe", aggfunc="first")
-             .reset_index())
-
+    # --- Graphe : uniquement l'année + l'avancement ---
+    # 1) courbe de l'année complète (gris)
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=df_up_to_now["date"], y=df_up_to_now["niveau_nappe"],
-        mode="lines", name="Historique (jusqu'à date simulée)"
+        x=year["date"], y=year["niveau_nappe"],
+        mode="lines",
+        name="Année (référence)",
+        opacity=0.25
     ))
 
-    if not pivot.empty:
-        if "wet" in pivot.columns:
-            fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["wet"], mode="lines", name="wet"))
-        if "dry" in pivot.columns:
-            fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["dry"], mode="lines", name="dry",
-                                     fill="tonexty", opacity=0.25))
-        if "medium" in pivot.columns:
-            fig.add_trace(go.Scatter(x=pivot["date"], y=pivot["medium"], mode="lines", name="medium"))
+    # 2) courbe jusqu'à la date simulée (bleu)
+    fig.add_trace(go.Scatter(
+        x=up_to_now["date"], y=up_to_now["niveau_nappe"],
+        mode="lines",
+        name="Avancement",
+    ))
 
-    fig.add_hline(y=seuil, line_dash="dash", annotation_text="Seuil", annotation_position="top left")
+    # 3) point “aujourd’hui simulé”
+    fig.add_trace(go.Scatter(
+        x=[up_to_now["date"].iloc[-1]],
+        y=[up_to_now["niveau_nappe"].iloc[-1]],
+        mode="markers",
+        name="Aujourd’hui",
+        marker=dict(size=10)
+    ))
 
-    if show_old_seuil:
-        fig.add_hline(y=old_seuil, line_color="red", line_dash="dash", opacity=0.25, line_width=2,
-                      annotation_text="Ancien seuil", annotation_position="top left")
+    # 4) seuil fictif
+    fig.add_hline(
+        y=fict_seuil,
+        line_dash="dot",
+        line_color="red",
+        opacity=0.35,
+        annotation_text="Seuil fictif",
+        annotation_position="top left"
+    )
 
-    fig.update_layout(height=520, xaxis_title="Date", yaxis_title="Niveau de nappe",
-                      legend=dict(orientation="h"),
-                      margin=dict(l=20, r=20, t=40, b=20))
+    fig.update_layout(
+        height=520,
+        xaxis_title="Date",
+        yaxis_title="Niveau de nappe",
+        legend=dict(orientation="h"),
+        margin=dict(l=20, r=20, t=40, b=20),
+    )
     st.plotly_chart(fig, use_container_width=True)
 
-    # --- Tableaux (historique & prévision) ---
-    colA, colB = st.columns(2)
+    # --- (Optionnel) afficher les dates de passage sous/au-dessus du seuil ---
+    # Détection des bascules sur l'année (pour information)
+    tmp = year.copy()
+    tmp["below"] = tmp["niveau_nappe"] <= fict_seuil
+    tmp["switch"] = tmp["below"].ne(tmp["below"].shift())
+    switches = tmp[tmp["switch"]][["date", "below", "niveau_nappe"]].copy()
 
-    with colA:
-        st.markdown("### Historique des alertes (365j)")
-        occ_hist = episodes_sous_seuil(df_daily, seuil, now_date, window_days=365)
+    with st.expander("Voir les dates de bascule seuil (optionnel)"):
+        switches["etat"] = switches["below"].map({True: "CRITICAL", False: "SAFE"})
+        st.dataframe(switches[["date", "etat", "niveau_nappe"]], use_container_width=True, height=200)
 
-        if occ_hist.empty:
-            demo_hist = pd.DataFrame({
-                "Date_debut": pd.to_datetime(["2025-02-10","2024-11-18","2024-08-03","2024-04-15"]),
-                "Date_fin":   pd.to_datetime(["2025-02-14","2024-11-21","2024-08-05","2024-04-17"]),
-                "Nombre_de_jours": [5,4,3,3],
-                "Min_niveau": [seuil-0.35, seuil-0.22, seuil-0.41, seuil-0.18],
-            })
-            st.caption("Exemple (données fictives) — format du tableau :")
-            st.dataframe(demo_hist, use_container_width=True, height=220)
-        else:
-            st.dataframe(occ_hist, use_container_width=True, height=220)
-
-    with colB:
-        st.markdown("### Prévision des alertes")
-        fc_sc = fc[(fc["scenario"] == scenario) & (fc["date"] > now_date)].sort_values("date").head(horizon).copy()
-        fc_sc["alerte"] = fc_sc["niveau_nappe"] < seuil
-
-        pred_days = fc_sc[fc_sc["alerte"]].copy()
-        if pred_days.empty:
-            demo_pred = pd.DataFrame({
-                "Date_debut": pd.to_datetime(["2026-03-05","2026-04-12","2026-06-01","2026-07-20"]),
-                "Date_fin":   pd.to_datetime(["2026-03-08","2026-04-14","2026-06-03","2026-07-22"]),
-                "Nombre_de_jours":[4,3,3,3],
-                "Min_niveau":[seuil-0.18, seuil-0.12, seuil-0.25, seuil-0.08],
-            })
-            st.caption("Exemple (données fictives) — format du tableau :")
-            st.dataframe(demo_pred, use_container_width=True, height=220)
-        else:
-            pred_days = pred_days.sort_values("date")
-            pred_days["grp"] = pred_days["date"].diff().dt.days.gt(2).cumsum()
-            occ_pred = (
-                pred_days.groupby("grp")
-                .agg(Date_debut=("date","min"), Date_fin=("date","max"),
-                     Nombre_de_jours=("date","count"), Min_niveau=("niveau_nappe","min"))
-                .reset_index(drop=True)
-                .sort_values("Date_debut", ascending=False)
-            )
-            st.dataframe(occ_pred, use_container_width=True, height=220)
-
-    # --- AUTO-ADVANCE (le "temps réel") ---
+    # --- AUTO-ADVANCE (temps réel) ---
     if st.session_state.playing:
         if st.session_state.sim_idx >= len(sim_dates) - 1:
             st.session_state.playing = False
