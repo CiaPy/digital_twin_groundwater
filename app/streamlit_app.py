@@ -152,6 +152,33 @@ def sidebar_etat(is_safe: bool):
 
 tab1, tab2 = st.tabs(["📊 Dashboard", "🧪 Simulation"])
 
+st.markdown("""
+<script>
+const tabs = window.parent.document.querySelectorAll('[data-baseweb="tab"]');
+
+tabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => {
+
+        const sidebar = window.parent.document.querySelector('[data-testid="stSidebar"]');
+        const collapseButton = window.parent.document.querySelector('[data-testid="collapsedControl"]');
+
+        if(index === 1){ // TAB 2 (Simulation)
+            if(sidebar && !sidebar.classList.contains("collapsed")){
+                collapseButton.click();
+            }
+        }
+
+        if(index === 0){ // TAB 1 (Dashboard)
+            if(sidebar && sidebar.classList.contains("collapsed")){
+                collapseButton.click();
+            }
+        }
+
+    });
+});
+</script>
+""", unsafe_allow_html=True)
+
 with tab1:
     # ---- Prepare data (d'abord) ----
     df_hist = df[["date", "niveau_nappe", "pluie_mm", "etp_mm"]].dropna(subset=["niveau_nappe"]).copy()
