@@ -53,7 +53,65 @@ show_meteo = st.sidebar.checkbox("Afficher pluie/ETP", value=False)
 df_hist = df[["date", "niveau_nappe", "pluie_mm", "etp_mm"]].dropna(subset=["niveau_nappe"]).copy()
 df_hist = df_hist.sort_values("date")
 
+# ---- Etat actuel de la nappe ----
+current_level = df_hist["niveau_nappe"].iloc[-1]
+is_safe = current_level > seuil
+
 fc_sc = fc[fc["scenario"] == scenario].sort_values("date").head(horizon).copy()
+
+
+st.sidebar.markdown("### État de pompage")
+
+green_opacity = "1" if is_safe else "0.25"
+red_opacity = "1" if not is_safe else "0.25"
+
+st.sidebar.markdown(f"""
+<div style="display:flex; flex-direction:column; gap:10px">
+
+<div style="
+background-color: rgba(34,197,94,{green_opacity});
+padding:12px;
+border-radius:10px;
+color:white;
+font-weight:600;
+display:flex;
+align-items:center;
+gap:8px">
+
+<span style="
+width:12px;
+height:12px;
+background-color:limegreen;
+border-radius:50%;
+display:inline-block"></span>
+
+Safe level
+</div>
+
+
+<div style="
+background-color: rgba(239,68,68,{red_opacity});
+padding:12px;
+border-radius:10px;
+color:white;
+font-weight:600;
+display:flex;
+align-items:center;
+gap:8px">
+
+<span style="
+width:12px;
+height:12px;
+background-color:red;
+border-radius:50%;
+display:inline-block"></span>
+
+Groundwater critical level reached
+</div>
+
+</div>
+""", unsafe_allow_html=True)
+
 
 # ---- Layout ----
 col1, col2 = st.columns([2, 1])
