@@ -132,7 +132,7 @@ with col2:
     # -----------------------------
     # Historique (365 derniers jours)
     # -----------------------------
-    st.markdown("### Historique (365 derniers jours)")
+    st.markdown("### Historique des alertes")
     last_year = df_hist[df_hist["date"] >= (df_hist["date"].max() - pd.Timedelta(days=365))].copy()
     last_year["alerte"] = last_year["niveau_nappe"] < seuil
 
@@ -150,7 +150,7 @@ with col2:
             "seuil": [float(seuil), float(seuil), float(seuil)]
         }).sort_values("date", ascending=False)
 
-        st.caption("Exemple (données fictives) — format du tableau d’alertes historique :")
+        st.caption(" ")
         st.dataframe(demo_hist, use_container_width=True, height=160)
     else:
         st.error(f"{len(occ_hist)} jour(s) sous le seuil sur les 365 derniers jours.")
@@ -178,7 +178,7 @@ with col2:
             "seuil": [float(seuil), float(seuil)]
         }).sort_values("date", ascending=False)
 
-        st.caption("Exemple (données fictives) — format du tableau d’alertes prévision :")
+        st.caption(" ")
         st.dataframe(demo_pred, use_container_width=True, height=140)
     else:
         st.warning(f"Alerte prévue : {len(occ_pred)} jour(s) sous le seuil.")
