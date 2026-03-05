@@ -32,7 +32,7 @@ horizon = st.sidebar.selectbox("Horizon de prévision (jours)", [7, 30, 90, 365]
 # seuil par défaut = 10e percentile historique
 default_seuil = float(df["niveau_nappe"].dropna().quantile(0.1))
 seuil = st.sidebar.number_input(
-    "Seuil d'alerte (même unité que niveau)",
+    "Seuil d'alerte actuel",
     value=default_seuil,
     step=0.1
 )
