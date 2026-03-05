@@ -30,14 +30,14 @@ st.title("Synthetic Digital Twin for Groundwater Extraction and Monitoring ")
 #st.caption("Piézomètre Hub'Eau + météo SAFRAN (pluie/ETP) + régression linéaire + scénarios")
 st.caption(
 """
-# Données et sources
+**Données et sources**
 - Piézomètre 03272X0006/PZ : Hub'Eau (ADES)  
 - Précipitation (mm) et Evapotranspiration Potentielle (mm) : SAFRAN
 
-# Modèle de prévision 
+**Modèle de prévision**
 - Régression linéaire
 
-# Scénarios 
+**Scénarios** 
 - Dry
 - Medium
 - Wet 
