@@ -278,81 +278,134 @@ with tab2:
 
 with tab3:
     st.subheader("🎥 Simulation en Temps Réel (1 an)")
-    # Paramètres de simulation
-    sim_seuil = st.number_input("Seuil critique (m) - Simulation", value=114.2, step=0.1, key="sim_seuil")
-    sim_speed = st.slider("Vitesse de simulation (jours/seconde)", 1, 30, 15, key="sim_speed")
-    sim_start_date = st.date_input("Date de début", value=pd.Timestamp("2025-01-01"), key="sim_date")
+
+    # Paramètres
+    sim_seuil = st.number_input("Seuil critique (m)", value=114.2, step=0.1, key="sim_seuil_live")
+    sim_speed = st.slider("Vitesse de simulation (jours/seconde)", 1, 30, 10, key="sim_speed_live")
+    sim_start_date = pd.Timestamp("2025-01-01")  # Date fixe pour la démo
+
     if st.button("▶️ Lancer la simulation"):
-        # Initialiser la simulation
-        start_date = pd.Timestamp(sim_start_date)
+        # Préparer les données
+        start_date = sim_start_date
         end_date = start_date + pd.Timedelta(days=365)
         sim_dates = pd.date_range(start_date, end_date, freq="D")
-        # Préparer l'affichage
+
+        # Filtrer les données historiques
+        current_df = df[df["date"] >= start_date].copy()
+        current_df = current_df[current_df["date"] <= end_date]
+        current_df = current_df.sort_values("date")
+
+        # Initialisation
         placeholder = st.empty()
         log_placeholder = st.container()
-        # Réinitialiser le journal
+
         simulation_log = []
+        current_state = None
+        period_start = None
+
+        # Boucle de simulation
         for i, current_date in enumerate(sim_dates):
-            # Filtrer les données jusqu'à la date courante
-            current_df = df[df["date"] <= current_date]
-            if current_df.empty:
+            # Données jusqu'à la date courante
+            sub_df = current_df[current_df["date"] <= current_date]
+            if sub_df.empty:
                 continue
-            current_level = float(current_df["niveau_nappe"].iloc[-1])
+            current_level = float(sub_df["niveau_nappe"].iloc[-1])
             is_safe = current_level > sim_seuil
+
             # Décision automatique
-            if is_safe:
-                etat_barrage = "Marche"
-                color = "green"
-            else:
-                etat_barrage = "Arrêt"
-                color = "red"
-            # Journal
-            if len(simulation_log) == 0 or simulation_log[-1]["état"] != etat_barrage:
-                simulation_log.append({
-                    "date": current_date.strftime("%Y-%m-%d"),
-                    "niveau": round(current_level, 2),
-                    "état": etat_barrage,
-                    "raison": "Niveau critique" if not is_safe else "Niveau sûr"
-                })
-            # Affichage dans le placeholder
+            etat_barrage = "Marche" if is_safe else "Arrêt"
+
+            # Gestion des périodes
+            if etat_barrage != current_state:
+                if current_state is not None:
+                    # Fin de la période précédente
+                    simulation_log.append({
+                        "État": current_state,
+                        "Début": period_start.strftime("%Y-%m-%d"),
+                        "Fin": (current_date - pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
+                        "Durée (jours)": (current_date - period_start).days,
+                        "Seuil (m)": sim_seuil,
+                        "Niveau moyen (m)": round(sub_df["niveau_nappe"].tail(len(sub_df) - len(sub_df[sub_df["date"] < period_start])).mean(), 2)
+                    })
+                # Nouvelle période
+                current_state = etat_barrage
+                period_start = current_date
+
+            # --- Affichage dynamique ---
             with placeholder.container():
                 col1, col2 = st.columns([2, 1])
+
                 with col1:
-                    st.markdown("### Évolution en direct")
+                    st.markdown("### Évolution du niveau d’eau")
                     fig = go.Figure()
-                    # Historique
+
+                    # Historique complet (gris)
                     fig.add_trace(go.Scatter(
                         x=current_df["date"],
                         y=current_df["niveau_nappe"],
                         mode="lines",
-                        name="Niveau nappe",
+                        name="Historique",
+                        line=dict(color="lightgray", width=2),
+                        opacity=0.5
+                    ))
+
+                    # Données simulées jusqu'à aujourd'hui (bleu)
+                    fig.add_trace(go.Scatter(
+                        x=sub_df["date"],
+                        y=sub_df["niveau_nappe"],
+                        mode="lines",
+                        name="Simulation",
                         line=dict(color="blue", width=2)
                     ))
+
                     # Seuil
                     fig.add_hline(y=sim_seuil, line_dash="dash", line_color="red",
-                                  annotation_text="Seuil critique", annotation_position="top left")
-                    fig.update_layout(height=400, margin=dict(l=20, r=20, t=40, b=20))
+                                  annotation_text=f"Seuil : {sim_seuil} m", annotation_position="top left")
+
+                    # Curseur : jour actuel
+                    fig.add_vline(
+                        x=current_date,
+                        line_color="orange",
+                        line_width=3,
+                        annotation_text=f"Jour : {current_date.strftime('%Y-%m-%d')}",
+                        annotation_position="top left"
+                    )
+
+                    fig.update_layout(
+                        height=500,
+                        xaxis_title="Date",
+                        yaxis_title="Niveau (m)",
+                        margin=dict(l=20, r=20, t=60, b=20)
+                    )
                     st.plotly_chart(fig, use_container_width=True)
+
                 with col2:
                     st.markdown("### État du système")
+                    color = "green" if etat_barrage == "Marche" else "red"
                     st.markdown(f"""
-                    <div class="status-card" style="background: #1a1a1a; border-left: 5px solid {color};">
-                        <span class="dot" style="background: {color};"></span>
-                        <strong>Barrage :</strong> {etat_barrage}
-                    </div>
-                    <div style="margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    <div style="padding:15px; border-radius:10px; background-color: #1a1a1a; color: white; margin: 10px 0;">
                         <strong>📅 Date :</strong> {current_date.strftime("%Y-%m-%d")}<br>
                         <strong>💧 Niveau :</strong> {current_level:.2f} m<br>
-                        <strong>🎯 Seuil :</strong> {sim_seuil} m
+                        <strong>🎯 Seuil :</strong> {sim_seuil} m<br>
+                        <strong>🔴 Barrage :</strong> 
+                        <span style="color: {color}; font-weight: bold;">{etat_barrage}</span>
                     </div>
                     """, unsafe_allow_html=True)
-            # Pause selon la vitesse
+
+            # Pause pour simuler le temps réel
             time.sleep(1.0 / sim_speed)
-        # Afficher le journal final
+
+        # --- Afficher l'historique des périodes ---
         with log_placeholder:
-            st.markdown("### 📜 Journal de la simulation")
+            st.markdown("### 📊 Historique des états du barrage")
             if simulation_log:
                 log_df = pd.DataFrame(simulation_log)
                 st.dataframe(log_df, use_container_width=True)
+
+                # Statistiques
+                total_marche = log_df[log_df["État"] == "Marche"]["Durée (jours)"].sum()
+                total_arret = log_df[log_df["État"] == "Arrêt"]["Durée (jours)"].sum()
+                st.markdown(f"**📊 Bilan sur 1 an :** {total_marche} jours en **marche**, {total_arret} jours à **l'arrêt**")
             else:
-                st.info("Aucune transition d'état enregistrée.")
+                st.info("Aucune transition d'état détectée pendant la simulation.")
+
