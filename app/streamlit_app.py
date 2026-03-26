@@ -224,30 +224,95 @@ with tab1:
         st.markdown("---")
         st.markdown("### 📊 Current Mode")
         if mode == "Automatic":
-            st.info("🔁 Automatic mode: Dam control based on water level")
+            st.info("🔁 Automatic mode: Decisions based on water level")
         else:
             st.warning(">manual mode: Manual control active")
 
-    with col_graph:
-        st.subheader("Water Level Monitoring")
+        # Résumé des scénarios (prévision finale)
+        try:
+            forecast_end = fc.groupby("scenario").last()
+            dry_level = forecast_end.loc["dry", "niveau_nappe"]
+            wet_level = forecast_end.loc["wet", "niveau_nappe"]
 
+            st.markdown("### 📈 1-Year Forecast Summary")
+            st.metric("Dry Scenario", f"{dry_level:.2f} m")
+            st.metric("Wet Scenario", f"{wet_level:.2f} m")
+            st.caption("Based on forecast_scenarios.csv")
+        except:
+            st.info("Forecast data not available")
+
+    with col_graph:
+        st.subheader("📊 Water Level Monitoring & Forecast")
+
+        # --- Graphique 1 : Historique ---
         fig = go.Figure()
+
+        # Historique
         fig.add_trace(go.Scatter(
             x=df["date"],
             y=df["niveau_nappe"],
             mode="lines",
-            name="Water Level",
+            name="Historical Level",
             line=dict(color="blue", width=2)
         ))
-        fig.add_hline(y=threshold, line_dash="dash", line_color="red",
-                      annotation_text="Critical threshold", annotation_position="top left")
+
+        # Seuil
+        fig.add_hline(
+            y=threshold,
+            line_dash="dash",
+            line_color="red",
+            annotation_text="Critical Threshold",
+            annotation_position="top left"
+        )
+
         fig.update_layout(
-            height=500,
+            height=300,
+            title="Historical Water Level",
             xaxis_title="Date",
             yaxis_title="Level (m)",
             margin=dict(l=20, r=20, t=40, b=20)
         )
         st.plotly_chart(fig, use_container_width=True)
+
+        # --- Graphique 2 : Prévisions (What-If Scenarios) ---
+        st.markdown("### 🔮 What-If Forecast Scenarios (1 Year)")
+
+        # Filtrer les prévisions sur 365 jours
+        forecast_horizon = fc[fc["date"] >= pd.Timestamp("2025-01-01")].copy()
+        forecast_horizon = forecast_horizon[forecast_horizon["date"] <= pd.Timestamp("2025-01-01") + pd.Timedelta(days=365)]
+        scenarios = forecast_horizon.groupby("scenario")
+
+        fig_forecast = go.Figure()
+
+        colors = {"dry": "red", "medium": "orange", "wet": "blue"}
+
+        for name, group in scenarios:
+            fig_forecast.add_trace(go.Scatter(
+                x=group["date"],
+                y=group["niveau_nappe"],
+                mode="lines",
+                name=f"Scenario: {name.capitalize()}",
+                line=dict(color=colors.get(name, "gray"), width=2),
+                opacity=0.8
+            ))
+
+        fig_forecast.add_hline(
+            y=threshold,
+            line_dash="dash",
+            line_color="red",
+            annotation_text="Critical Threshold",
+            annotation_position="top left"
+        )
+
+        fig_forecast.update_layout(
+            height=400,
+            xaxis_title="Date",
+            yaxis_title="Level (m)",
+            legend=dict(orientation="h"),
+            margin=dict(l=20, r=20, t=40, b=20)
+        )
+
+        st.plotly_chart(fig_forecast, use_container_width=True)
 
     with col_control:
         st.markdown("## 📋 Action Log")
@@ -256,6 +321,7 @@ with tab1:
             st.dataframe(log_df[::-1], use_container_width=True, height=400)
         else:
             st.info("No actions recorded.")
+
 
 with tab2:
     st.subheader("📋 State History")
