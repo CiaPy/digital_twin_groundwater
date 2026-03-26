@@ -252,81 +252,87 @@ with tab1:
             # Prévisions (scénarios)
             forecast_horizon = fc[fc["date"] > df["date"].max()].copy()
             forecast_horizon = forecast_horizon[forecast_horizon["date"] <= pd.Timestamp("2025-01-01") + pd.Timedelta(days=365)]
-            forecast_wide = forecast_horizon.pivot(index="date", columns="scenario", values="niveau_nappe").reset_index()
+            
+            if forecast_horizon.empty:
+                st.warning("No forecast data available for the selected period.")
+            else:
+                # Pivot des scénarios
+                forecast_wide = forecast_horizon.pivot(index="date", columns="scenario", values="niveau_nappe").reset_index()
     
-            # Fusionner historique + prévisions
-            combined = pd.merge(hist, forecast_wide[["date"]], on="date", how="outer", indicator=True)
-            combined["date"] = pd.to_datetime(combined["date"])
-            combined = combined.sort_values("date")
+                # --- Créer le graphique ---
+                fig = go.Figure()
     
-            # --- Créer le graphique ---
-            fig = go.Figure()
+                # 1. Historique (bleu)
+                fig.add_trace(go.Scatter(
+                    x=hist["date"],
+                    y=hist["niveau_nappe"],
+                    mode="lines",
+                    name="Historical",
+                    line=dict(color="blue", width=2),
+                    opacity=0.8
+                ))
     
-            # 1. Historique (bleu)
-            fig.add_trace(go.Scatter(
-                x=hist["date"],
-                y=hist["niveau_nappe"],
-                mode="lines",
-                name="Historical",
-                line=dict(color="blue", width=2),
-                opacity=0.8
-            ))
+                # 2. Scénarios de prévision
+                colors = {"dry": "red", "medium": "orange", "wet": "green"}
+                for scenario in ["dry", "medium", "wet"]:
+                    if scenario in forecast_wide.columns:
+                        fc_data = forecast_wide[["date", scenario]].dropna()
+                        fig.add_trace(go.Scatter(
+                            x=fc_data["date"],
+                            y=fc_data[scenario],
+                            mode="lines",
+                            name=f"Forecast: {scenario.capitalize()}",
+                            line=dict(color=colors[scenario], width=2, dash="dot" if scenario != "medium" else "solid"),
+                            opacity=0.9
+                        ))
     
-            # 2. Scénarios de prévision
-            colors = {"dry": "red", "medium": "orange", "wet": "green"}
-            for scenario in ["dry", "medium", "wet"]:
-                if scenario in forecast_wide.columns:
-                    fc_data = forecast_wide[["date", scenario]].dropna()
+                # 3. Ligne de tendance globale (régression linéaire sur l'historique + scénario medium)
+                try:
+                    # Combiner historique + medium
+                    trend_medium = forecast_wide[["date", "medium"]].dropna()
+                    trend_medium = trend_medium.rename(columns={"medium": "niveau_nappe"})
+                    
+                    trend_data = pd.concat([hist[["date", "niveau_nappe"]], trend_medium])
+                    trend_data = trend_data.dropna().sort_values("date")
+    
+                    # Régression linéaire
+                    from scipy import stats
+                    trend_x = trend_data["date"].map(pd.Timestamp.toordinal)
+                    slope, intercept, r_value, p_value, std_err = stats.linregress(trend_x, trend_data["niveau_nappe"])
+                    trend_y = [slope * x + intercept for x in trend_x]
+    
                     fig.add_trace(go.Scatter(
-                        x=fc_data["date"],
-                        y=fc_data[scenario],
+                        x=trend_data["date"],
+                        y=trend_y,
                         mode="lines",
-                        name=f"Forecast: {scenario.capitalize()}",
-                        line=dict(color=colors[scenario], width=2, dash="dot" if scenario != "medium" else "solid"),
-                        opacity=0.9
+                        name="Trend (Linear Regression)",
+                        line=dict(color="purple", width=2, dash="dash"),
+                        opacity=0.7
                     ))
+                except Exception as e:
+                    st.debug("Trend line could not be computed: " + str(e))
+                    pass  # Ne bloque pas l'app
     
-            # 3. Ligne de tendance globale (régression linéaire sur l'historique + scénario medium)
-            # On combine l'historique + medium pour la tendance
-            trend_data = pd.concat([
-                hist[["date", "niveau_nappe"]],
-                forecast_wide[["date", "medium"]].rename(columns={"medium": "niveau_nappe"})
-            ]).dropna().sort_values("date")
+                # 4. Seuil critique
+                fig.add_hline(
+                    y=threshold,
+                    line_dash="dash",
+                    line_color="red",
+                    annotation_text="Critical Threshold",
+                    annotation_position="top left"
+                )
     
-            # Régression linéaire (simple)
-            from scipy import stats
-            trend_x = trend_data["date"].map(pd.Timestamp.toordinal)
-            slope, intercept, r_value, p_value, std_err = stats.linregress(trend_x, trend_data["niveau_nappe"])
-            trend_y = [slope * x + intercept for x in trend_x]
+                # --- Mise en page ---
+                fig.update_layout(
+                    height=500,
+                    xaxis_title="Date",
+                    yaxis_title="Water Level (m)",
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    margin=dict(l=20, r=20, t=40, b=20)
+                )
     
-            fig.add_trace(go.Scatter(
-                x=trend_data["date"],
-                y=trend_y,
-                mode="lines",
-                name="Trend (Linear Regression)",
-                line=dict(color="purple", width=2, dash="dash"),
-                opacity=0.7
-            ))
-    
-            # 4. Seuil critique
-            fig.add_hline(
-                y=threshold,
-                line_dash="dash",
-                line_color="red",
-                annotation_text="Critical Threshold",
-                annotation_position="top left"
-            )
-    
-            # --- Mise en page ---
-            fig.update_layout(
-                height=500,
-                xaxis_title="Date",
-                yaxis_title="Water Level (m)",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                margin=dict(l=20, r=20, t=40, b=20)
-            )
-    
-            st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True)
+
 
 
     with col_control:
