@@ -241,22 +241,74 @@ with tab1:
         except:
             st.info("Forecast data not available")
 
-    with col_graph:
-        st.subheader("📊 Water Level Monitoring & Forecast")
+        with col_graph:
+        st.subheader("📊 Water Level: Historical & Forecast (What-If Scenarios)")
 
-        # --- Graphique 1 : Historique ---
+        # --- Préparer les données combinées ---
+        # Historique
+        hist = df[["date", "niveau_nappe"]].copy()
+        hist["type"] = "Historical"
+
+        # Prévisions (scénarios)
+        forecast_horizon = fc[fc["date"] > df["date"].max()].copy()
+        forecast_horizon = forecast_horizon[forecast_horizon["date"] <= pd.Timestamp("2025-01-01") + pd.Timedelta(days=365)]
+        forecast_wide = forecast_horizon.pivot(index="date", columns="scenario", values="niveau_nappe").reset_index()
+
+        # Fusionner historique + prévisions
+        combined = pd.merge(hist, forecast_wide[["date"]], on="date", how="outer", indicator=True)
+        combined["date"] = pd.to_datetime(combined["date"])
+        combined = combined.sort_values("date")
+
+        # --- Créer le graphique ---
         fig = go.Figure()
 
-        # Historique
+        # 1. Historique (bleu)
         fig.add_trace(go.Scatter(
-            x=df["date"],
-            y=df["niveau_nappe"],
+            x=hist["date"],
+            y=hist["niveau_nappe"],
             mode="lines",
-            name="Historical Level",
-            line=dict(color="blue", width=2)
+            name="Historical",
+            line=dict(color="blue", width=2),
+            opacity=0.8
         ))
 
-        # Seuil
+        # 2. Scénarios de prévision
+        colors = {"dry": "red", "medium": "orange", "wet": "green"}
+        for scenario in ["dry", "medium", "wet"]:
+            if scenario in forecast_wide.columns:
+                fc_data = forecast_wide[["date", scenario]].dropna()
+                fig.add_trace(go.Scatter(
+                    x=fc_data["date"],
+                    y=fc_data[scenario],
+                    mode="lines",
+                    name=f"Forecast: {scenario.capitalize()}",
+                    line=dict(color=colors[scenario], width=2, dash="dot" if scenario != "medium" else "solid"),
+                    opacity=0.9
+                ))
+
+        # 3. Ligne de tendance globale (régression linéaire sur l'historique + scénario medium)
+        # On combine l'historique + medium pour la tendance
+        trend_data = pd.concat([
+            hist[["date", "niveau_nappe"]],
+            forecast_wide[["date", "medium"]].rename(columns={"medium": "niveau_nappe"})
+        ]).dropna().sort_values("date")
+
+        # Régression linéaire (simple)
+        from scipy import stats
+        trend_x = trend_data["date"].map(pd.Timestamp.toordinal)
+        slope, intercept, r_value, p_value, std_err = stats.linregress(trend_x, trend_data["niveau_nappe"])
+        trend_y = [slope * x + intercept for x in trend_x]
+
+        fig.add_trace(go.Scatter(
+            x=trend_data["date"],
+            y=trend_y,
+            mode="lines",
+            name="Trend (Linear Regression)",
+            line=dict(color="purple", width=2, dash="dash"),
+            opacity=0.7
+        ))
+
+        # 4. Seuil critique
         fig.add_hline(
             y=threshold,
             line_dash="dash",
@@ -265,54 +317,17 @@ with tab1:
             annotation_position="top left"
         )
 
+        # --- Mise en page ---
         fig.update_layout(
-            height=300,
-            title="Historical Water Level",
+            height=500,
             xaxis_title="Date",
-            yaxis_title="Level (m)",
+            yaxis_title="Water Level (m)",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
             margin=dict(l=20, r=20, t=40, b=20)
         )
+
         st.plotly_chart(fig, use_container_width=True)
 
-        # --- Graphique 2 : Prévisions (What-If Scenarios) ---
-        st.markdown("### 🔮 What-If Forecast Scenarios (1 Year)")
-
-        # Filtrer les prévisions sur 365 jours
-        forecast_horizon = fc[fc["date"] >= pd.Timestamp("2025-01-01")].copy()
-        forecast_horizon = forecast_horizon[forecast_horizon["date"] <= pd.Timestamp("2025-01-01") + pd.Timedelta(days=365)]
-        scenarios = forecast_horizon.groupby("scenario")
-
-        fig_forecast = go.Figure()
-
-        colors = {"dry": "red", "medium": "orange", "wet": "blue"}
-
-        for name, group in scenarios:
-            fig_forecast.add_trace(go.Scatter(
-                x=group["date"],
-                y=group["niveau_nappe"],
-                mode="lines",
-                name=f"Scenario: {name.capitalize()}",
-                line=dict(color=colors.get(name, "gray"), width=2),
-                opacity=0.8
-            ))
-
-        fig_forecast.add_hline(
-            y=threshold,
-            line_dash="dash",
-            line_color="red",
-            annotation_text="Critical Threshold",
-            annotation_position="top left"
-        )
-
-        fig_forecast.update_layout(
-            height=400,
-            xaxis_title="Date",
-            yaxis_title="Level (m)",
-            legend=dict(orientation="h"),
-            margin=dict(l=20, r=20, t=40, b=20)
-        )
-
-        st.plotly_chart(fig_forecast, use_container_width=True)
 
     with col_control:
         st.markdown("## 📋 Action Log")
