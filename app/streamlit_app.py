@@ -282,8 +282,8 @@ with tab2:
 with tab3:
     st.subheader("🎥 Real-Time Simulation (1 year)")
 
-    sim_threshold = st.number_input("Critical threshold (m)", value=114.2, step=0.1, key="sim_threshold")
-    sim_speed = st.slider("Simulation speed (days/second)", 1, 30, 10, key="sim_speed")
+    sim_threshold = st.number_input("Critical threshold (m)", value=114.2, step=0.1, key="sim_threshold_live")
+    sim_speed = st.slider("Simulation speed (days/second)", 1, 30, 10, key="sim_speed_live")
     sim_start_date = pd.Timestamp("2025-01-01")
 
     if st.button("▶️ Start Simulation"):
@@ -294,13 +294,15 @@ with tab3:
         current_df = current_df[current_df["date"] <= end_date]
         current_df = current_df.sort_values("date")
 
-        placeholder = st.empty()
-        log_placeholder = st.container()
+        # --- Initialisation ---
+        placeholder = st.empty()  # Pour le graphique et l'état
+        log_placeholder = st.empty()  # Pour le tableau qui se met à jour en temps réel
 
         simulation_log = []
         current_state = None
         period_start = None
 
+        # --- Boucle de simulation ---
         for i, current_date in enumerate(sim_dates):
             sub_df = current_df[current_df["date"] <= current_date]
             if sub_df.empty:
@@ -309,19 +311,31 @@ with tab3:
             is_safe = current_level > sim_threshold
             dam_state = "Running" if is_safe else "Stopped"
 
+            # --- Gestion des transitions d'état ---
             if dam_state != current_state:
                 if current_state is not None:
-                    simulation_log.append({
+                    # Fin de la période précédente
+                    new_entry = {
                         "Status": current_state,
                         "Start": period_start.strftime("%Y-%m-%d"),
                         "End": (current_date - pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
                         "Duration (days)": (current_date - period_start).days,
                         "Threshold (m)": sim_threshold,
                         "Average Level (m)": round(sub_df["niveau_nappe"].tail(len(sub_df) - len(sub_df[sub_df["date"] < period_start])).mean(), 2)
-                    })
+                    }
+                    simulation_log.append(new_entry)
+
+                    # --- Mise à jour IMMÉDIATE du tableau ---
+                    log_df = pd.DataFrame(simulation_log)
+                    with log_placeholder.container():
+                        st.markdown("### 📊 State Transition History")
+                        st.dataframe(log_df, use_container_width=True)
+
+                # Nouvelle période
                 current_state = dam_state
                 period_start = current_date
 
+            # --- Affichage dynamique ---
             with placeholder.container():
                 col1, col2 = st.columns([2, 1])
 
@@ -394,15 +408,14 @@ with tab3:
                     </div>
                     """, unsafe_allow_html=True)
 
+            # --- Pause pour simuler le temps réel ---
             time.sleep(1.0 / sim_speed)
 
-        with log_placeholder:
-            st.markdown("### 📊 Simulation History")
-            if simulation_log:
-                log_df = pd.DataFrame(simulation_log)
-                st.dataframe(log_df, use_container_width=True)
-                total_run = log_df[log_df["Status"] == "Running"]["Duration (days)"].sum()
-                total_stop = log_df[log_df["Status"] == "Stopped"]["Duration (days)"].sum()
-                st.markdown(f"**📊 Annual Summary:** {total_run} days **running**, {total_stop} days **stopped**")
-            else:
-                st.info("No state transitions detected during simulation.")
+        # --- Message final ---
+        if simulation_log:
+            total_run = sum([x["Duration (days)"] for x in simulation_log if x["Status"] == "Running"])
+            total_stop = sum([x["Duration (days)"] for x in simulation_log if x["Status"] == "Stopped"])
+            st.markdown(f"**📊 Final Summary:** {total_run} days **running**, {total_stop} days **stopped**")
+        else:
+            st.info("No state transitions occurred during the simulation.")
+
