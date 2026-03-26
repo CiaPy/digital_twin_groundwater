@@ -105,6 +105,26 @@ except:
     fc = pd.DataFrame({"date": dates[-365:], "scenario": "medium", "niveau_nappe": np[-365:]})
     fc = pd.concat([fc.assign(scenario=sc) for sc in ["dry", "medium", "wet"]])
 
+
+
+# === Ajout : Génération de l'historique du barrage ===
+def generate_barrage_history(df, seuil, start_date=None):
+    if start_date is None:
+        start_date = df["date"].max() - pd.Timedelta(days=30)
+    history = df[df["date"] >= start_date].copy()
+    history["barrage_etat"] = "Arrêt"
+    # Simulation simple : si niveau > seuil - 0.5, on suppose marche
+    history.loc[history["niveau_nappe"] > (seuil - 0.5), "barrage_etat"] = "Marche"
+    return history
+
+
+# Générer l'historique dès le démarrage
+if "barrage_history" not in st.session_state:
+    st.session_state.barrage_history = generate_barrage_history(df, seuil=114.2)
+
+
+
+
 # --- États de session ---
 if "barrage_etat" not in st.session_state:
     st.session_state.barrage_etat = "Marche"  # ou "Arrêt"
