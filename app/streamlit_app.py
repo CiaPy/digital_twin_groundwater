@@ -241,77 +241,77 @@ with tab1:
             st.info("Forecast data not available")
 
     # ✅ GRAPHIQUE : bien en dehors de col_param
-   with col_graph:
-    st.subheader("📊 Water Level: Historical & Forecast")
-
-    # --- 1. Données historiques ---
-    hist = df[["date", "niveau_nappe"]].copy()
-
-    # --- 2. Prévision Medium (uniquement) ---
-    try:
-        # Filtrer le scénario "medium"
-        forecast_medium = fc[fc["scenario"] == "medium"].copy()
-        # Garder uniquement les données futures
-        forecast_future = forecast_medium[forecast_medium["date"] > df["date"].max()].copy()
-        
-        if forecast_future.empty:
-            st.warning("No forecast data available.")
-    except Exception as e:
-        st.warning("Could not load forecast data.")
-        forecast_future = pd.DataFrame()
-
-    # --- 3. Créer le graphique ---
-    fig = go.Figure()
-
-    # Historique (bleu)
-    fig.add_trace(go.Scatter(
-        x=hist["date"],
-        y=hist["niveau_nappe"],
-        mode="lines",
-        name="Historical",
-        line=dict(color="blue", width=2),
-        opacity=0.8
-    ))
-
-    # Dernier point (pour bien voir où on en est)
-    fig.add_trace(go.Scatter(
-        x=[hist["date"].iloc[-1]],
-        y=[hist["niveau_nappe"].iloc[-1]],
-        mode="markers",
-        name="Current Level",
-        marker=dict(size=10, color="darkblue", symbol="circle")
-    ))
-
-    # Prévision Medium (orange, pointillés)
-    if not forecast_future.empty:
+    with col_graph:
+        st.subheader("📊 Water Level: Historical & Forecast")
+    
+        # --- 1. Données historiques ---
+        hist = df[["date", "niveau_nappe"]].copy()
+    
+        # --- 2. Prévision Medium (uniquement) ---
+        try:
+            # Filtrer le scénario "medium"
+            forecast_medium = fc[fc["scenario"] == "medium"].copy()
+            # Garder uniquement les données futures
+            forecast_future = forecast_medium[forecast_medium["date"] > df["date"].max()].copy()
+            
+            if forecast_future.empty:
+                st.warning("No forecast data available.")
+        except Exception as e:
+            st.warning("Could not load forecast data.")
+            forecast_future = pd.DataFrame()
+    
+        # --- 3. Créer le graphique ---
+        fig = go.Figure()
+    
+        # Historique (bleu)
         fig.add_trace(go.Scatter(
-            x=forecast_future["date"],
-            y=forecast_future["niveau_nappe"],
+            x=hist["date"],
+            y=hist["niveau_nappe"],
             mode="lines",
-            name="Forecast: Medium",
-            line=dict(color="orange", width=2, dash="dot"),
-            opacity=0.9
+            name="Historical",
+            line=dict(color="blue", width=2),
+            opacity=0.8
         ))
-
-    # Seuil critique (rouge)
-    fig.add_hline(
-        y=threshold,
-        line_dash="dash",
-        line_color="red",
-        annotation_text="Critical Threshold",
-        annotation_position="top left"
-    )
-
-    # --- 4. Mise en page ---
-    fig.update_layout(
-        height=500,
-        xaxis_title="Date",
-        yaxis_title="Water Level (m)",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        margin=dict(l=20, r=20, t=40, b=20)
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
+    
+        # Dernier point (pour bien voir où on en est)
+        fig.add_trace(go.Scatter(
+            x=[hist["date"].iloc[-1]],
+            y=[hist["niveau_nappe"].iloc[-1]],
+            mode="markers",
+            name="Current Level",
+            marker=dict(size=10, color="darkblue", symbol="circle")
+        ))
+    
+        # Prévision Medium (orange, pointillés)
+        if not forecast_future.empty:
+            fig.add_trace(go.Scatter(
+                x=forecast_future["date"],
+                y=forecast_future["niveau_nappe"],
+                mode="lines",
+                name="Forecast: Medium",
+                line=dict(color="orange", width=2, dash="dot"),
+                opacity=0.9
+            ))
+    
+        # Seuil critique (rouge)
+        fig.add_hline(
+            y=threshold,
+            line_dash="dash",
+            line_color="red",
+            annotation_text="Critical Threshold",
+            annotation_position="top left"
+        )
+    
+        # --- 4. Mise en page ---
+        fig.update_layout(
+            height=500,
+            xaxis_title="Date",
+            yaxis_title="Water Level (m)",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(l=20, r=20, t=40, b=20)
+        )
+    
+        st.plotly_chart(fig, use_container_width=True)
 
 
     # --- Journal des actions ---
