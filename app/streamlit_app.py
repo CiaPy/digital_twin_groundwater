@@ -183,7 +183,7 @@ if mode == "Automatique":
         })
 
 # --- Affichage principal ---
-tab1, tab2 = st.tabs(["📊 Supervision", "📈 Historique"])
+tab1, tab2, tab3 = st.tabs(["📊 Supervision", "📈 Historique", "▶️ Live"])
 
 with tab1:
     # Colonnes
@@ -275,3 +275,84 @@ with tab2:
         file_name="journal_barrage.csv",
         mime="text/csv"
     )
+
+with tab3:
+    st.subheader("🎥 Simulation en Temps Réel (1 an)")
+    # Paramètres de simulation
+    sim_seuil = st.number_input("Seuil critique (m) - Simulation", value=114.2, step=0.1, key="sim_seuil")
+    sim_speed = st.slider("Vitesse de simulation (jours/seconde)", 1, 30, 15, key="sim_speed")
+    sim_start_date = st.date_input("Date de début", value=pd.Timestamp("2025-01-01"), key="sim_date")
+    if st.button("▶️ Lancer la simulation"):
+        # Initialiser la simulation
+        start_date = pd.Timestamp(sim_start_date)
+        end_date = start_date + pd.Timedelta(days=365)
+        sim_dates = pd.date_range(start_date, end_date, freq="D")
+        # Préparer l'affichage
+        placeholder = st.empty()
+        log_placeholder = st.container()
+        # Réinitialiser le journal
+        simulation_log = []
+        for i, current_date in enumerate(sim_dates):
+            # Filtrer les données jusqu'à la date courante
+            current_df = df[df["date"] <= current_date]
+            if current_df.empty:
+                continue
+            current_level = float(current_df["niveau_nappe"].iloc[-1])
+            is_safe = current_level > sim_seuil
+            # Décision automatique
+            if is_safe:
+                etat_barrage = "Marche"
+                color = "green"
+            else:
+                etat_barrage = "Arrêt"
+                color = "red"
+            # Journal
+            if len(simulation_log) == 0 or simulation_log[-1]["état"] != etat_barrage:
+                simulation_log.append({
+                    "date": current_date.strftime("%Y-%m-%d"),
+                    "niveau": round(current_level, 2),
+                    "état": etat_barrage,
+                    "raison": "Niveau critique" if not is_safe else "Niveau sûr"
+                })
+            # Affichage dans le placeholder
+            with placeholder.container():
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.markdown("### Évolution en direct")
+                    fig = go.Figure()
+                    # Historique
+                    fig.add_trace(go.Scatter(
+                        x=current_df["date"],
+                        y=current_df["niveau_nappe"],
+                        mode="lines",
+                        name="Niveau nappe",
+                        line=dict(color="blue", width=2)
+                    ))
+                    # Seuil
+                    fig.add_hline(y=sim_seuil, line_dash="dash", line_color="red",
+                                  annotation_text="Seuil critique", annotation_position="top left")
+                    fig.update_layout(height=400, margin=dict(l=20, r=20, t=40, b=20))
+                    st.plotly_chart(fig, use_container_width=True)
+                with col2:
+                    st.markdown("### État du système")
+                    st.markdown(f"""
+                    <div class="status-card" style="background: #1a1a1a; border-left: 5px solid {color};">
+                        <span class="dot" style="background: {color};"></span>
+                        <strong>Barrage :</strong> {etat_barrage}
+                    </div>
+                    <div style="margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                        <strong>📅 Date :</strong> {current_date.strftime("%Y-%m-%d")}<br>
+                        <strong>💧 Niveau :</strong> {current_level:.2f} m<br>
+                        <strong>🎯 Seuil :</strong> {sim_seuil} m
+                    </div>
+                    """, unsafe_allow_html=True)
+            # Pause selon la vitesse
+            time.sleep(1.0 / sim_speed)
+        # Afficher le journal final
+        with log_placeholder:
+            st.markdown("### 📜 Journal de la simulation")
+            if simulation_log:
+                log_df = pd.DataFrame(simulation_log)
+                st.dataframe(log_df, use_container_width=True)
+            else:
+                st.info("Aucune transition d'état enregistrée.")
