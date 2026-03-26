@@ -197,12 +197,13 @@ if mode == "Automatic":
 tab1, tab2, tab3 = st.tabs(["📊 Supervision", "📈 History", "▶️ Live"])
 
 with tab1:
+    # Colonnes
     col_param, col_graph, col_control = st.columns([1, 2, 1])
 
     with col_param:
         st.markdown("## 📡 Real-Time Data")
 
-        # Water level
+        # Niveau d'eau
         st.markdown(f"""
         <div class="status-card {'status-safe' if is_safe else 'status-alert'}">
             <span class="dot {'dot-green' if is_safe else 'dot-red'}"></span>
@@ -210,17 +211,7 @@ with tab1:
         </div>
         """, unsafe_allow_html=True)
 
-        # Dam status
-        status_color = "status-running" if st.session_state.dam_status == "Running" else "status-stopped"
-        dot_color = "dot-blue" if st.session_state.dam_status == "Running" else "dot-red"
-        st.markdown(f"""
-        <div class="status-card {status_color}">
-            <span class="dot {dot_color}"></span>
-            <strong>Dam:</strong> {st.session_state.dam_status}
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Control mode
+        # Mode de contrôle
         mode_color = "status-running" if mode == "Automatic" else "status-alert"
         dot_mode = "dot-green" if mode == "Automatic" else "dot-red"
         st.markdown(f"""
@@ -231,8 +222,11 @@ with tab1:
         """, unsafe_allow_html=True)
 
         st.markdown("---")
-        st.markdown("### 🏗️ Dam")
-        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Grande_Discorde_dam.jpg/800px-Grande_Discorde_dam.jpg", width=200)
+        st.markdown("### 📊 Current Mode")
+        if mode == "Automatic":
+            st.info("🔁 Automatic mode: Dam control based on water level")
+        else:
+            st.warning(">manual mode: Manual control active")
 
     with col_graph:
         st.subheader("Water Level Monitoring")
