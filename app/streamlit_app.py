@@ -251,7 +251,7 @@ with tab1:
 
         # Prévisions (scénarios)
         forecast_horizon = fc[fc["date"] > df["date"].max()].copy()
-        forecast_horizon = forecast_horizon[forecast_horizon["date"] <= pd.Timestamp("2025-01-01") + pd.Timedelta(days=365))]
+        forecast_horizon = forecast_horizon[ forecast_horizon["date"] <= (pd.Timestamp("2025-01-01") + pd.Timedelta(days=365))]
         
         if forecast_horizon.empty:
             st.warning("No forecast data available for the selected period.")
