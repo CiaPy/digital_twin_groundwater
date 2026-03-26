@@ -364,7 +364,7 @@ with tab3:
 
                     # Curseur : jour actuel
                     fig.add_vline(
-                        x=current_date,
+                        x=current_date.strftime("%Y-%m-%d"),  # Convertir en str
                         line_color="orange",
                         line_width=3,
                         annotation_text=f"Jour : {current_date.strftime('%Y-%m-%d')}",
