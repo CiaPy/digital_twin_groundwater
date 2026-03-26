@@ -359,23 +359,46 @@ with tab3:
                     ))
 
                     # Seuil
-                    fig.add_hline(y=sim_seuil, line_dash="dash", line_color="red",
-                                  annotation_text=f"Seuil : {sim_seuil} m", annotation_position="top left")
-
-                    # Curseur : jour actuel
-                    fig.add_vline(
-                        x=current_date.strftime("%Y-%m-%d"),  # Convertir en str
-                        line_color="orange",
-                        line_width=3,
-                        annotation_text=f"Jour : {current_date.strftime('%Y-%m-%d')}",
+                    fig.add_hline(
+                        y=sim_seuil,
+                        line_dash="dash",
+                        line_color="red",
+                        annotation_text=f"Seuil : {sim_seuil} m",
                         annotation_position="top left"
+                    )
+
+                    # --- Curseur : jour actuel (CORRIGÉ) ---
+                    # Ajout de la ligne verticale
+                    fig.add_shape(
+                        type="line",
+                        x0=current_date,
+                        x1=current_date,
+                        y0=0,
+                        y1=1,
+                        xref="x",
+                        yref="paper",
+                        line=dict(color="orange", width=3)
+                    )
+                    # Ajout de l'annotation manuellement
+                    fig.add_annotation(
+                        x=current_date,
+                        y=1.02,
+                        xref="x",
+                        yref="paper",
+                        text=f"Jour : {current_date.strftime('%Y-%m-%d')}",
+                        showarrow=False,
+                        font=dict(size=12, color="orange"),
+                        bgcolor="rgba(0,0,0,0.6)",
+                        borderpad=4,
+                        xanchor="center"
                     )
 
                     fig.update_layout(
                         height=500,
                         xaxis_title="Date",
                         yaxis_title="Niveau (m)",
-                        margin=dict(l=20, r=20, t=60, b=20)
+                        margin=dict(l=20, r=20, t=60, b=20),
+                        xaxis=dict(type="date")  # ✅ Sécurité supplémentaire
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
