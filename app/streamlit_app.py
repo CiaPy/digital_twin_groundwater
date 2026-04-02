@@ -377,17 +377,122 @@ st.markdown(f"""
 # ──────────────────────────────────────────
 # VIEW SELECTOR (radio → 3 views)
 # ──────────────────────────────────────────
-view_choice = st.radio(
-    "Select view",
-    ["📡 Live (1 year)", "📈 Forecasting", "📋 Full History"],
-    horizontal=True,
-    label_visibility="collapsed"
-)
-view_map = {"📡 Live (1 year)": "live", "📈 Forecasting": "forecast", "📋 Full History": "history"}
-st.session_state.view = view_map[view_choice]
+top1, top2, top3 = st.columns([1.2, 1.4, 1])
 
-# Sync view after stop
+with top1:
+    pump1_state = "ON" if st.session_state.pump1 else "OFF"
+    pump1_color = "#16a34a" if st.session_state.pump1 else "#ef4444"
+
+    pump2_state = "ON" if st.session_state.pump2 else "OFF"
+    pump2_color = "#16a34a" if st.session_state.pump2 else "#ef4444"
+
+    st.markdown(f"""
+    <div style="
+        border:1px solid #d0d9e8;
+        border-radius:12px;
+        background:white;
+        padding:16px;
+        min-height:95px;
+    ">
+        <div style="font-size:13px;color:#64748b;margin-bottom:12px;">
+            Pump Status
+        </div>
+
+        <div style="
+            display:inline-block;
+            background:{pump1_color};
+            color:white;
+            padding:8px 12px;
+            border-radius:8px;
+            font-family:'IBM Plex Mono', monospace;
+            font-size:0.8rem;
+            margin-right:8px;
+        ">
+            ⚡ Pump 1 {pump1_state}
+        </div>
+
+        <div style="
+            display:inline-block;
+            background:{pump2_color};
+            color:white;
+            padding:8px 12px;
+            border-radius:8px;
+            font-family:'IBM Plex Mono', monospace;
+            font-size:0.8rem;
+        ">
+            ⚡ Pump 2 {pump2_state}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with top2:
+    st.markdown("""
+    <div style="
+        border:1px solid #d0d9e8;
+        border-radius:12px;
+        background:white;
+        padding:16px;
+        min-height:95px;
+    ">
+        <div style="font-size:13px;color:#64748b;text-align:center;margin-bottom:10px;">
+            Navigation
+        </div>
+    """, unsafe_allow_html=True)
+
+    nav1, nav2, nav3 = st.columns(3)
+
+    with nav1:
+        if st.button("📡 Live", use_container_width=True):
+            st.session_state.view = "live"
+
+    with nav2:
+        if st.button("📈 Forecasting", use_container_width=True):
+            st.session_state.view = "forecast"
+
+    with nav3:
+        if st.button("📋 History", use_container_width=True):
+            st.session_state.view = "history"
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+with top3:
+    st.markdown(f"""
+    <div style="
+        border:1px solid #4a80f5;
+        border-radius:12px;
+        background:white;
+        padding:16px;
+        min-height:95px;
+        text-align:center;
+    ">
+        <div style="font-size:13px;color:#64748b;margin-bottom:10px;">
+            Current State
+        </div>
+
+        <div style="
+            color:#1d4ed8;
+            font-family:'IBM Plex Mono', monospace;
+            font-size:0.9rem;
+        ">
+            📅 {current_date.strftime('%Y-%m-%d')}
+        </div>
+
+        <div style="
+            color:#1d4ed8;
+            font-family:'IBM Plex Mono', monospace;
+            font-size:1.1rem;
+            font-weight:600;
+            margin-top:6px;
+        ">
+            💧 {current_level:.2f} m
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("<div style='margin-bottom:18px;'></div>", unsafe_allow_html=True)
+
 if st.session_state.auto_forecast:
+    st.session_state.view = "forecast"
     st.session_state.auto_forecast = False
 
 # ──────────────────────────────────────────
