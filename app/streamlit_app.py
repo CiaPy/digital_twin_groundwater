@@ -650,14 +650,23 @@ elif st.session_state.view == "forecast":
                 line=dict(color=sc_colors[sc], width=2, dash="dot"), opacity=0.9
             ))
 
-    # Extra point if added
+    # Stop point on top chart
     if add_stop_point:
         extra_ts = pd.Timestamp(extra_date)
         fig_top.add_trace(go.Scatter(
             x=[extra_ts], y=[extra_level],
-            mode="markers", name="Extra point",
-            marker=dict(size=12, color="#f43f5e", symbol="star")
+            mode="markers+text",
+            marker=dict(size=14, color="#f43f5e", symbol="star"),
+            text=[f" Stop {extra_level:.2f}m"], textposition="top right",
+            textfont=dict(color="#f43f5e", size=10),
+            name="Stop point"
         ))
+        fig_top.add_vline(
+            x=extra_ts, line_dash="dot", line_color="#f43f5e", line_width=1,
+            annotation_text="Stop → forecast recalculated",
+            annotation_position="top left",
+            annotation_font=dict(color="#f43f5e", size=9)
+        )
 
     add_threshold_line(fig_top, threshold)
     apply_theme(fig_top)
@@ -687,25 +696,65 @@ elif st.session_state.view == "forecast":
                     line=dict(color=sc_colors[sc], width=2)
                 ))
 
-        # Recalculated forecast if extra point added
+        # Recalculated forecast from stop point
         if add_stop_point:
             extra_ts = pd.Timestamp(extra_date)
             extra_lv = float(extra_level)
-            recompute_dates = fc_future[fc_future["date"] >= extra_ts]["date"].unique()
-            for sc, delta in [("dry", +0.8), ("medium", 0.0), ("wet", -0.6)]:
-                if sc in scenario_choice:
-                    t2 = np.linspace(0, delta, len(recompute_dates))
-                    vals2 = extra_lv + t2 + np.random.normal(0, 0.15, len(recompute_dates))
+
+            # Dates strictly after the stop point, sorted
+            recompute_df = fc_future[fc_future["date"] >= extra_ts].copy()
+            recompute_df = recompute_df.sort_values("date")
+            recompute_dates = recompute_df["date"].unique()
+            n_pts = len(recompute_dates)
+
+            if n_pts > 0:
+                # Add vertical line at stop point
+                fig_bot.add_vline(
+                    x=extra_ts, line_dash="dot", line_color="#f43f5e", line_width=1.5,
+                    annotation_text="Stop", annotation_position="top right",
+                    annotation_font=dict(color="#f43f5e", size=10)
+                )
+
+                # Reproducible seed so curves don't jump on each rerender
+                rng = np.random.default_rng(seed=42)
+
+                for sc, annual_drift in [("dry", +0.8), ("medium", 0.0), ("wet", -0.6)]:
+                    if sc not in scenario_choice:
+                        continue
+
+                    # Smooth seasonal + trend from the stop level
+                    t        = np.linspace(0, 1, n_pts)           # 0→1 over the horizon
+                    trend    = annual_drift * t                    # linear drift
+                    seasonal = 0.8 * np.sin(2 * np.pi * t * (n_pts / 365))
+                    noise    = rng.normal(0, 0.08, n_pts)
+                    # Cumulative smoothing so the curve stays continuous
+                    smooth_noise = np.cumsum(noise) * 0.02
+                    vals2    = extra_lv + trend + seasonal + smooth_noise
+
+                    # Uncertainty band that widens with time
+                    band_w2 = 0.05 + 0.6 * t
+                    fig_bot.add_trace(go.Scatter(
+                        x=np.concatenate([recompute_dates, recompute_dates[::-1]]),
+                        y=np.concatenate([vals2 + band_w2, (vals2 - band_w2)[::-1]]),
+                        fill="toself", fillcolor=sc_colors[sc],
+                        opacity=0.10, line=dict(width=0),
+                        name=f"{sc.capitalize()} recalc. band", showlegend=False
+                    ))
                     fig_bot.add_trace(go.Scatter(
                         x=recompute_dates, y=vals2,
                         mode="lines", name=f"{sc.capitalize()} (recalc.)",
-                        line=dict(color=sc_colors[sc], width=1.5, dash="dashdot"),
-                        opacity=0.7
+                        line=dict(color=sc_colors[sc], width=2, dash="dashdot"),
+                        opacity=0.95
                     ))
+
+            # Star marker at stop point
             fig_bot.add_trace(go.Scatter(
                 x=[extra_ts], y=[extra_lv],
-                mode="markers", name="Extra point",
-                marker=dict(size=12, color="#f43f5e", symbol="star")
+                mode="markers+text",
+                marker=dict(size=14, color="#f43f5e", symbol="star"),
+                text=[f" Stop: {extra_lv:.2f}m"], textposition="top right",
+                textfont=dict(color="#f43f5e", size=10),
+                name="Stop point"
             ))
 
         add_threshold_line(fig_bot, threshold)
