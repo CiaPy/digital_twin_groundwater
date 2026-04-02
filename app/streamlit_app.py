@@ -284,7 +284,6 @@ with st.sidebar:
     img_path = Path(__file__).parent / "site_overview.png"
     
     st.image(str(img_path), use_container_width=True)
-    st.image("site_overview.png", use_container_width=True)
 
     
 
