@@ -661,11 +661,15 @@ elif st.session_state.view == "forecast":
             textfont=dict(color="#f43f5e", size=10),
             name="Stop point"
         ))
-        fig_top.add_vline(
-            x=extra_ts.isoformat(), line_dash="dot", line_color="#f43f5e", line_width=1,
-            annotation_text="Stop → forecast recalculated",
-            annotation_position="top left",
-            annotation_font=dict(color="#f43f5e", size=9)
+        fig_top.add_shape(type="line",
+            x0=str(extra_ts.date()), x1=str(extra_ts.date()), y0=0, y1=1,
+            xref="x", yref="paper",
+            line=dict(color="#f43f5e", width=1, dash="dot")
+        )
+        fig_top.add_annotation(
+            x=str(extra_ts.date()), y=1.02, xref="x", yref="paper",
+            text="Stop → recalculated", showarrow=False,
+            font=dict(color="#f43f5e", size=9), xanchor="left"
         )
 
     add_threshold_line(fig_top, threshold)
@@ -709,10 +713,15 @@ elif st.session_state.view == "forecast":
 
             if n_pts > 0:
                 # Add vertical line at stop point
-                fig_bot.add_vline(
-                    x=extra_ts.isoformat(), line_dash="dot", line_color="#f43f5e", line_width=1.5,
-                    annotation_text="Stop", annotation_position="top right",
-                    annotation_font=dict(color="#f43f5e", size=10)
+                fig_bot.add_shape(type="line",
+                    x0=str(extra_ts.date()), x1=str(extra_ts.date()), y0=0, y1=1,
+                    xref="x", yref="paper",
+                    line=dict(color="#f43f5e", width=1.5, dash="dot")
+                )
+                fig_bot.add_annotation(
+                    x=str(extra_ts.date()), y=1.02, xref="x", yref="paper",
+                    text="Stop", showarrow=False,
+                    font=dict(color="#f43f5e", size=10), xanchor="center"
                 )
 
                 # Reproducible seed so curves don't jump on each rerender
