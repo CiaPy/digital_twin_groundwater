@@ -279,7 +279,11 @@ with st.sidebar:
     # ── Pump Schema (SVG mini-map) ──
     st.markdown("---")
     st.markdown("### 🗺️ Site Overview")
+    from pathlib import Path
 
+    img_path = Path(__file__).parent / "site_overview.png"
+    
+    st.image(str(img_path), use_container_width=True)
     st.image("site_overview.png", use_container_width=True)
 
     
