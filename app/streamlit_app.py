@@ -662,7 +662,7 @@ elif st.session_state.view == "forecast":
             name="Stop point"
         ))
         fig_top.add_vline(
-            x=extra_ts, line_dash="dot", line_color="#f43f5e", line_width=1,
+            x=extra_ts.isoformat(), line_dash="dot", line_color="#f43f5e", line_width=1,
             annotation_text="Stop → forecast recalculated",
             annotation_position="top left",
             annotation_font=dict(color="#f43f5e", size=9)
@@ -710,7 +710,7 @@ elif st.session_state.view == "forecast":
             if n_pts > 0:
                 # Add vertical line at stop point
                 fig_bot.add_vline(
-                    x=extra_ts, line_dash="dot", line_color="#f43f5e", line_width=1.5,
+                    x=extra_ts.isoformat(), line_dash="dot", line_color="#f43f5e", line_width=1.5,
                     annotation_text="Stop", annotation_position="top right",
                     annotation_font=dict(color="#f43f5e", size=10)
                 )
