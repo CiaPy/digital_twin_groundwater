@@ -185,8 +185,11 @@ defaults = {
     "pump2": False,
     "control_mode": "Automatic",
     "control_log": [],
-    "view": "live",          # live | forecast | history
+    "view": "live",
     "sim_running": False,
+    "live_stopped_at": None,       # date where live was stopped
+    "live_stopped_level": None,    # water level at stop moment
+    "auto_forecast": False,        # flag: jump to forecast after stop
 }
 for k, v in defaults.items():
     if k not in st.session_state:
@@ -221,26 +224,56 @@ with st.sidebar:
     st.session_state.pump1 = p1
     st.session_state.pump2 = p2
 
-    # Manual controls
+    # ── Start / Stop Live — always visible ──
+    st.markdown("---")
+    st.markdown("### ▶️ Live Simulation")
+    sb1, sb2 = st.columns(2)
+    with sb1:
+        if st.button("▶ Start", use_container_width=True, type="primary"):
+            st.session_state.sim_running = True
+            st.session_state.auto_forecast = False
+            st.session_state.live_stopped_at = None
+            st.session_state.live_stopped_level = None
+            st.session_state.view = "live"
+            st.session_state.control_log.append({
+                "time": datetime.now().strftime("%H:%M:%S"),
+                "action": "Live START",
+                "pumps": f"P1={'ON' if p1 else 'OFF'} P2={'ON' if p2 else 'OFF'}",
+                "level": float(df["niveau_nappe"].iloc[-1])
+            })
+    with sb2:
+        if st.button("■ Stop", use_container_width=True):
+            st.session_state.sim_running = False
+            st.session_state.auto_forecast = True   # ← triggers forecast jump
+            st.session_state.control_log.append({
+                "time": datetime.now().strftime("%H:%M:%S"),
+                "action": "Live STOP → Forecast",
+                "pumps": f"P1={'ON' if p1 else 'OFF'} P2={'ON' if p2 else 'OFF'}",
+                "level": float(df["niveau_nappe"].iloc[-1])
+            })
+
+    # If stop was pressed and no live date captured yet, use current last date
+    if st.session_state.auto_forecast and st.session_state.live_stopped_at is None:
+        st.session_state.live_stopped_at    = df["date"].iloc[-1]
+        st.session_state.live_stopped_level = float(df["niveau_nappe"].iloc[-1])
+
+    # Manual pump commands (only in manual mode)
     if mode == "Manual":
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("▶ Start", use_container_width=True):
-                if st.session_state.pump1: st.session_state["pump1_running"] = True
-                if st.session_state.pump2: st.session_state["pump2_running"] = True
+        st.markdown("**Manual Pump Override**")
+        mc1, mc2 = st.columns(2)
+        with mc1:
+            if st.button("💧 Pump ON", use_container_width=True):
                 st.session_state.control_log.append({
                     "time": datetime.now().strftime("%H:%M:%S"),
-                    "action": "Manual START",
+                    "action": "Manual pump ON",
                     "pumps": f"P1={'ON' if p1 else 'OFF'} P2={'ON' if p2 else 'OFF'}",
                     "level": float(df["niveau_nappe"].iloc[-1])
                 })
-        with c2:
-            if st.button("■ Stop", use_container_width=True):
-                if st.session_state.pump1: st.session_state["pump1_running"] = False
-                if st.session_state.pump2: st.session_state["pump2_running"] = False
+        with mc2:
+            if st.button("🚫 Pump OFF", use_container_width=True):
                 st.session_state.control_log.append({
                     "time": datetime.now().strftime("%H:%M:%S"),
-                    "action": "Manual STOP",
+                    "action": "Manual pump OFF",
                     "pumps": f"P1={'ON' if p1 else 'OFF'} P2={'ON' if p2 else 'OFF'}",
                     "level": float(df["niveau_nappe"].iloc[-1])
                 })
@@ -389,6 +422,12 @@ view_choice = st.radio(
 view_map = {"📡 Live (1 year)": "live", "📈 Forecasting": "forecast", "📋 Full History": "history"}
 st.session_state.view = view_map[view_choice]
 
+# Auto-switch to forecast if Stop was pressed
+if st.session_state.auto_forecast and st.session_state.view != "forecast":
+    st.session_state.view = "forecast"
+    st.session_state.auto_forecast = False
+    st.rerun()
+
 # ──────────────────────────────────────────
 # PLOTLY THEME HELPER
 # ──────────────────────────────────────────
@@ -478,12 +517,20 @@ if st.session_state.view == "live":
             state_log = []
             cur_state = None
             period_start = None
+            last_date_seen  = sim_df["date"].iloc[0]
+            last_level_seen = float(sim_df["niveau_nappe"].iloc[0])
 
             for i, row in sim_df.iterrows():
                 today     = row["date"]
                 lvl       = row["niveau_nappe"]
                 safe_now  = lvl > threshold
                 dam_state = "Running" if (safe_now and any_pump_active) else "Stopped"
+                last_date_seen  = today
+                last_level_seen = float(lvl)
+
+                # Save current position in case Stop is pressed externally
+                st.session_state.live_stopped_at    = today
+                st.session_state.live_stopped_level = last_level_seen
 
                 if dam_state != cur_state:
                     if cur_state is not None:
@@ -552,6 +599,20 @@ elif st.session_state.view == "forecast":
     last_hist_date = df["date"].max()
     fc_future = fc[fc["date"] > last_hist_date].copy()
 
+    # ── Banner: came from Live stop? ──
+    came_from_live = (st.session_state.live_stopped_at is not None)
+    if came_from_live:
+        stopped_date_str  = pd.Timestamp(st.session_state.live_stopped_at).strftime("%Y-%m-%d")
+        stopped_level_val = st.session_state.live_stopped_level
+        st.markdown(f"""
+        <div style="background:#fffbeb;border:1px solid #f59e0b;border-left:5px solid #f59e0b;
+                    border-radius:8px;padding:10px 16px;margin-bottom:12px;
+                    font-family:'IBM Plex Mono',monospace;font-size:0.82rem;color:#92400e;">
+            ⏸️ <strong>Live stopped at {stopped_date_str}</strong> — level {stopped_level_val:.2f} m
+            &nbsp;|&nbsp; Forecast recalculated from this point ↓
+        </div>
+        """, unsafe_allow_html=True)
+
     # Controls row
     fc1, fc2, fc3 = st.columns([2, 1, 1])
     with fc1:
@@ -561,11 +622,14 @@ elif st.session_state.view == "forecast":
             default=["dry", "medium", "wet"]
         )
     with fc2:
-        add_stop_point = st.checkbox("➕ Add extra data point", value=False)
+        # Pre-check if we came from live
+        add_stop_point = st.checkbox("➕ Add / update stop point", value=came_from_live)
     with fc3:
         if add_stop_point:
-            extra_date  = st.date_input("Extra date", value=last_hist_date.date())
-            extra_level = st.number_input("Level (m)", value=float(df["niveau_nappe"].iloc[-1]), step=0.1)
+            default_date  = pd.Timestamp(st.session_state.live_stopped_at).date() if came_from_live else last_hist_date.date()
+            default_level = st.session_state.live_stopped_level if came_from_live else float(df["niveau_nappe"].iloc[-1])
+            extra_date    = st.date_input("Stop date", value=default_date)
+            extra_level   = st.number_input("Level (m)", value=float(default_level), step=0.1)
 
     # ── TOP: historical + forecast ──
     fig_top = go.Figure()
