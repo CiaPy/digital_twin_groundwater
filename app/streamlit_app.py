@@ -657,7 +657,7 @@ elif st.session_state.view == "forecast":
 
     fig_top.add_trace(go.Scatter(
         x=df["date"],
-            )
+            ))
 # ──────────────────────────────────────────
 # ── VIEW 3 : FULL HISTORY ──
 # ──────────────────────────────────────────
