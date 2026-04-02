@@ -282,41 +282,7 @@ with st.sidebar:
 
     st.image("site_overview.png", use_container_width=True)
 
-    st.markdown(f"""
-    <svg viewBox="0 0 220 160" xmlns="http://www.w3.org/2000/svg"
-         style="width:100%; background:#f0f6ff; border-radius:8px; border:1px solid #d0d9e8;">
-      <!-- Ground -->
-      <rect x="0" y="100" width="220" height="60" fill="#d4edda" opacity="0.8"/>
-      <!-- Water table -->
-      <rect x="10" y="110" width="200" height="20" rx="4" fill="#93c5fd" opacity="0.5"/>
-      <text x="110" y="124" text-anchor="middle" fill="#1d4ed8" font-size="8" font-family="monospace">Water Table</text>
-      <!-- Surface -->
-      <rect x="0" y="85" width="220" height="15" fill="#94a3b8" opacity="0.6"/>
-      <text x="10" y="96" fill="#475569" font-size="7" font-family="monospace">Ground Level</text>
-      <!-- Control center -->
-      <rect x="85" y="30" width="50" height="35" rx="4" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
-      <text x="110" y="50" text-anchor="middle" fill="#1d4ed8" font-size="7" font-family="monospace">Control</text>
-      <text x="110" y="60" text-anchor="middle" fill="#1d4ed8" font-size="7" font-family="monospace">Center</text>
-      <!-- Pipe to pump1 -->
-      <line x1="90" y1="65" x2="50" y2="100" stroke="#94a3b8" stroke-width="2"/>
-      <!-- Pipe to pump2 -->
-      <line x1="130" y1="65" x2="170" y2="100" stroke="#94a3b8" stroke-width="2"/>
-      <!-- PUMP 1 -->
-      <circle cx="40" cy="100" r="12" fill="{p1_color}" opacity="0.9" stroke="#fff" stroke-width="1.5"/>
-      <text x="40" y="104" text-anchor="middle" fill="white" font-size="7" font-weight="bold">P1</text>
-      <text x="40" y="118" text-anchor="middle" fill="{p1_color}" font-size="7" font-family="monospace">{p1_label}</text>
-      <!-- PUMP 2 -->
-      <circle cx="180" cy="100" r="12" fill="{p2_color}" opacity="0.9" stroke="#fff" stroke-width="1.5"/>
-      <text x="180" y="104" text-anchor="middle" fill="white" font-size="7" font-weight="bold">P2</text>
-      <text x="180" y="118" text-anchor="middle" fill="{p2_color}" font-size="7" font-family="monospace">{p2_label}</text>
-      <!-- Piezometer -->
-      <rect x="105" y="88" width="10" height="25" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
-      <text x="110" y="80" text-anchor="middle" fill="#d97706" font-size="7" font-family="monospace">Piezo</text>
-      <!-- Aquifer extraction arrows -->
-      <line x1="40" y1="112" x2="40" y2="128" stroke="{p1_color}" stroke-width="1.5" stroke-dasharray="2,2"/>
-      <line x1="180" y1="112" x2="180" y2="128" stroke="{p2_color}" stroke-width="1.5" stroke-dasharray="2,2"/>
-    </svg>
-    """, unsafe_allow_html=True)
+    
 
     # ── PDF Report ──
     st.markdown("---")
