@@ -280,10 +280,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🗺️ Site Overview")
 
-    st.image(
-    "assets/site_overview.png",
-    use_container_width=True
-)
+    st.image("site_overview.png", use_container_width=True)
 
     st.markdown(f"""
     <svg viewBox="0 0 220 160" xmlns="http://www.w3.org/2000/svg"
