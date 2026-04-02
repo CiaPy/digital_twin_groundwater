@@ -25,8 +25,8 @@ st.markdown("""
 
 html, body, [class*="css"] {
     font-family: 'IBM Plex Sans', sans-serif;
-    background-color: #0d1117;
-    color: #c9d1d9;
+    background-color: #f4f7fb;
+    color: #1a2233;
 }
 
 /* ── HEADER BAND ── */
@@ -34,11 +34,12 @@ html, body, [class*="css"] {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #161b22;
-    border: 1px solid #30363d;
+    background: #ffffff;
+    border: 1px solid #d0d9e8;
     border-radius: 10px;
     padding: 12px 20px;
     margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 .pump-badge {
     font-family: 'IBM Plex Mono', monospace;
@@ -55,9 +56,9 @@ html, body, [class*="css"] {
 .level-badge {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.85rem;
-    background: #1c2128;
-    border: 1px solid #388bfd;
-    color: #79c0ff;
+    background: #e8f0fe;
+    border: 1px solid #4a80f5;
+    color: #1a56db;
     padding: 6px 14px;
     border-radius: 6px;
 }
@@ -71,30 +72,31 @@ html, body, [class*="css"] {
 .dot-nav {
     width: 14px; height: 14px;
     border-radius: 50%;
-    background: #30363d;
-    border: 2px solid #58a6ff;
+    background: #d0d9e8;
+    border: 2px solid #4a80f5;
     cursor: pointer;
     transition: all 0.2s;
 }
-.dot-nav.active { background: #58a6ff; }
+.dot-nav.active { background: #4a80f5; }
 
 /* ── STATUS CARDS ── */
 .status-block {
-    background: #161b22;
-    border: 1px solid #30363d;
+    background: #ffffff;
+    border: 1px solid #d0d9e8;
     border-radius: 8px;
     padding: 10px 14px;
     margin: 6px 0;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.78rem;
+    color: #1a2233;
 }
-.status-block.running { border-left: 4px solid #22c55e; }
-.status-block.stopped { border-left: 4px solid #ef4444; }
+.status-block.running { border-left: 4px solid #16a34a; }
+.status-block.stopped { border-left: 4px solid #dc2626; }
 
 /* ── PUMP SCHEMA ── */
 .pump-schema {
-    background: #1c2128;
-    border: 1px solid #30363d;
+    background: #f0f4fa;
+    border: 1px solid #d0d9e8;
     border-radius: 8px;
     padding: 10px;
     margin: 8px 0;
@@ -102,19 +104,20 @@ html, body, [class*="css"] {
 
 /* ── SIDEBAR style override ── */
 [data-testid="stSidebar"] {
-    background-color: #0d1117;
-    border-right: 1px solid #30363d;
+    background-color: #ffffff;
+    border-right: 1px solid #d0d9e8;
 }
 [data-testid="stSidebar"] * {
-    color: #c9d1d9 !important;
+    color: #1a2233 !important;
 }
 
 /* ── METRIC override ── */
 [data-testid="stMetric"] {
-    background: #161b22;
-    border: 1px solid #30363d;
+    background: #ffffff;
+    border: 1px solid #d0d9e8;
     border-radius: 8px;
     padding: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 
 div[data-testid="stTabs"] button {
@@ -253,34 +256,34 @@ with st.sidebar:
 
     st.markdown(f"""
     <svg viewBox="0 0 220 160" xmlns="http://www.w3.org/2000/svg"
-         style="width:100%; background:#1c2128; border-radius:8px; border:1px solid #30363d;">
+         style="width:100%; background:#f0f6ff; border-radius:8px; border:1px solid #d0d9e8;">
       <!-- Ground -->
-      <rect x="0" y="100" width="220" height="60" fill="#1a2e1a" opacity="0.6"/>
+      <rect x="0" y="100" width="220" height="60" fill="#d4edda" opacity="0.8"/>
       <!-- Water table -->
-      <rect x="10" y="110" width="200" height="20" rx="4" fill="#1d4ed8" opacity="0.5"/>
-      <text x="110" y="124" text-anchor="middle" fill="#93c5fd" font-size="8" font-family="monospace">Water Table</text>
+      <rect x="10" y="110" width="200" height="20" rx="4" fill="#93c5fd" opacity="0.5"/>
+      <text x="110" y="124" text-anchor="middle" fill="#1d4ed8" font-size="8" font-family="monospace">Water Table</text>
       <!-- Surface -->
-      <rect x="0" y="85" width="220" height="15" fill="#374151" opacity="0.8"/>
-      <text x="10" y="96" fill="#6b7280" font-size="7" font-family="monospace">Ground Level</text>
+      <rect x="0" y="85" width="220" height="15" fill="#94a3b8" opacity="0.6"/>
+      <text x="10" y="96" fill="#475569" font-size="7" font-family="monospace">Ground Level</text>
       <!-- Control center -->
-      <rect x="85" y="30" width="50" height="35" rx="4" fill="#1e3a5f" stroke="#58a6ff" stroke-width="1.5"/>
-      <text x="110" y="50" text-anchor="middle" fill="#93c5fd" font-size="7" font-family="monospace">Control</text>
-      <text x="110" y="60" text-anchor="middle" fill="#93c5fd" font-size="7" font-family="monospace">Center</text>
+      <rect x="85" y="30" width="50" height="35" rx="4" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="110" y="50" text-anchor="middle" fill="#1d4ed8" font-size="7" font-family="monospace">Control</text>
+      <text x="110" y="60" text-anchor="middle" fill="#1d4ed8" font-size="7" font-family="monospace">Center</text>
       <!-- Pipe to pump1 -->
-      <line x1="90" y1="65" x2="50" y2="100" stroke="#475569" stroke-width="2"/>
+      <line x1="90" y1="65" x2="50" y2="100" stroke="#94a3b8" stroke-width="2"/>
       <!-- Pipe to pump2 -->
-      <line x1="130" y1="65" x2="170" y2="100" stroke="#475569" stroke-width="2"/>
+      <line x1="130" y1="65" x2="170" y2="100" stroke="#94a3b8" stroke-width="2"/>
       <!-- PUMP 1 -->
-      <circle cx="40" cy="100" r="12" fill="{p1_color}" opacity="0.85" stroke="#fff" stroke-width="1"/>
+      <circle cx="40" cy="100" r="12" fill="{p1_color}" opacity="0.9" stroke="#fff" stroke-width="1.5"/>
       <text x="40" y="104" text-anchor="middle" fill="white" font-size="7" font-weight="bold">P1</text>
       <text x="40" y="118" text-anchor="middle" fill="{p1_color}" font-size="7" font-family="monospace">{p1_label}</text>
       <!-- PUMP 2 -->
-      <circle cx="180" cy="100" r="12" fill="{p2_color}" opacity="0.85" stroke="#fff" stroke-width="1"/>
+      <circle cx="180" cy="100" r="12" fill="{p2_color}" opacity="0.9" stroke="#fff" stroke-width="1.5"/>
       <text x="180" y="104" text-anchor="middle" fill="white" font-size="7" font-weight="bold">P2</text>
       <text x="180" y="118" text-anchor="middle" fill="{p2_color}" font-size="7" font-family="monospace">{p2_label}</text>
       <!-- Piezometer -->
-      <rect x="105" y="88" width="10" height="25" fill="#78350f" stroke="#f59e0b" stroke-width="1"/>
-      <text x="110" y="80" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="monospace">Piezo</text>
+      <rect x="105" y="88" width="10" height="25" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="110" y="80" text-anchor="middle" fill="#d97706" font-size="7" font-family="monospace">Piezo</text>
       <!-- Aquifer extraction arrows -->
       <line x1="40" y1="112" x2="40" y2="128" stroke="{p1_color}" stroke-width="1.5" stroke-dasharray="2,2"/>
       <line x1="180" y1="112" x2="180" y2="128" stroke="{p2_color}" stroke-width="1.5" stroke-dasharray="2,2"/>
@@ -362,7 +365,7 @@ st.markdown(f"""
     </div>
     <div class="dots-nav">
         {dots_html}
-        <span style="font-family:monospace;font-size:0.72rem;color:#58a6ff;margin-left:6px;">
+        <span style="font-family:monospace;font-size:0.72rem;color:#4a80f5;margin-left:6px;">
             view {view_labels.get(st.session_state.view,'?')}
         </span>
     </div>
@@ -390,13 +393,13 @@ st.session_state.view = view_map[view_choice]
 # PLOTLY THEME HELPER
 # ──────────────────────────────────────────
 PLOT_LAYOUT = dict(
-    paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="#0d1117",
-    font=dict(family="IBM Plex Mono", color="#c9d1d9", size=11),
-    xaxis=dict(gridcolor="#21262d", zeroline=False, showline=True, linecolor="#30363d"),
-    yaxis=dict(gridcolor="#21262d", zeroline=False, showline=True, linecolor="#30363d"),
+    paper_bgcolor="#ffffff",
+    plot_bgcolor="#f8fafd",
+    font=dict(family="IBM Plex Mono", color="#1a2233", size=11),
+    xaxis=dict(gridcolor="#e2e8f0", zeroline=False, showline=True, linecolor="#cbd5e1"),
+    yaxis=dict(gridcolor="#e2e8f0", zeroline=False, showline=True, linecolor="#cbd5e1"),
     margin=dict(l=20, r=20, t=40, b=20),
-    legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="#30363d", borderwidth=1,
+    legend=dict(bgcolor="rgba(255,255,255,0.9)", bordercolor="#d0d9e8", borderwidth=1,
                 font=dict(family="IBM Plex Mono", size=10))
 )
 
@@ -427,14 +430,14 @@ if st.session_state.view == "live":
 
     with col_status:
         st.markdown("#### System Status")
-        pump_color = "#22c55e" if pump_on else "#ef4444"
+        pump_color = "#16a34a" if pump_on else "#dc2626"
         pump_text  = "RUNNING" if pump_on else "STOPPED"
         st.markdown(f"""
         <div class="status-block {'running' if pump_on else 'stopped'}">
             <div style="color:{pump_color};font-size:1.1rem;">● {pump_text}</div>
-            <div style="color:#8b949e;margin-top:4px;">Level: {current_level:.2f} m</div>
-            <div style="color:#8b949e;">Threshold: {threshold:.1f} m</div>
-            <div style="color:#8b949e;">Mode: {mode}</div>
+            <div style="color:#475569;margin-top:4px;">Level: {current_level:.2f} m</div>
+            <div style="color:#475569;">Threshold: {threshold:.1f} m</div>
+            <div style="color:#475569;">Mode: {mode}</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -447,8 +450,8 @@ if st.session_state.view == "live":
             for entry in reversed(st.session_state.control_log[-4:]):
                 st.markdown(f"""
                 <div style="font-family:monospace;font-size:0.68rem;
-                            background:#161b22;padding:5px 8px;border-radius:5px;margin:3px 0;
-                            border-left:3px solid #388bfd;">
+                            background:#f0f6ff;padding:5px 8px;border-radius:5px;margin:3px 0;
+                            border-left:3px solid #4a80f5;color:#1a2233;">
                     {entry.get('time','')} {entry.get('action','')}
                 </div>
                 """, unsafe_allow_html=True)
@@ -526,8 +529,8 @@ if st.session_state.view == "live":
                     x=today, y=1.05, xref="x", yref="paper",
                     text=f"📅 {today.strftime('%Y-%m-%d')} | {dam_state}",
                     showarrow=False,
-                    font=dict(size=11, color="#f59e0b", family="IBM Plex Mono"),
-                    bgcolor="rgba(0,0,0,0.6)", borderpad=4, xanchor="center"
+                    font=dict(size=11, color="#d97706", family="IBM Plex Mono"),
+                    bgcolor="rgba(255,255,255,0.85)", borderpad=4, xanchor="center"
                 )
                 apply_theme(fig)
                 fig.update_layout(height=420, showlegend=True,
