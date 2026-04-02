@@ -280,10 +280,10 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🗺️ Site Overview")
 
-    p1_color = "#22c55e" if st.session_state.pump1 else "#ef4444"
-    p2_color = "#22c55e" if st.session_state.pump2 else "#ef4444"
-    p1_label = "ON" if st.session_state.pump1 else "OFF"
-    p2_label = "ON" if st.session_state.pump2 else "OFF"
+    st.image(
+    "assets/site_overview.png",
+    use_container_width=True
+)
 
     st.markdown(f"""
     <svg viewBox="0 0 220 160" xmlns="http://www.w3.org/2000/svg"
