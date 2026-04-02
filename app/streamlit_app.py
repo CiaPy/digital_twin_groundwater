@@ -244,26 +244,16 @@ with st.sidebar:
     with sb2:
         if st.button("■ Stop", use_container_width=True):
             st.session_state.sim_running = False
-    
-            # mémorise le point exact du stop
-            st.session_state.live_stopped_at = df["date"].iloc[-1]
-            st.session_state.live_stopped_level = float(df["niveau_nappe"].iloc[-1])
-    
-            # demande le passage automatique au forecast
+            st.session_state.live_stopped_at    = st.session_state.get("live_stopped_at") or df["date"].iloc[-1]
+            st.session_state.live_stopped_level = st.session_state.get("live_stopped_level") or float(df["niveau_nappe"].iloc[-1])
             st.session_state.auto_forecast = True
-
-        st.session_state.control_log.append({
-            "time": datetime.now().strftime("%H:%M:%S"),
-            "action": "Live STOP → Forecast",
-            "pumps": f"P1={'ON' if p1 else 'OFF'} P2={'ON' if p2 else 'OFF'}",
-            "level": float(df["niveau_nappe"].iloc[-1])
-        })
-        
-
-    # If stop was pressed and no live date captured yet, use current last date
-    if st.session_state.auto_forecast:
-        st.session_state.view = "forecast"
-        st.rerun()
+            st.session_state.control_log.append({
+                "time": datetime.now().strftime("%H:%M:%S"),
+                "action": "Live STOP → Forecast",
+                "pumps": f"P1={'ON' if p1 else 'OFF'} P2={'ON' if p2 else 'OFF'}",
+                "level": st.session_state.live_stopped_level
+            })
+            st.rerun()
 
     # Manual pump commands (only in manual mode)
     if mode == "Manual":
@@ -430,11 +420,9 @@ view_choice = st.radio(
 view_map = {"📡 Live (1 year)": "live", "📈 Forecasting": "forecast", "📋 Full History": "history"}
 st.session_state.view = view_map[view_choice]
 
-# Auto-switch to forecast if Stop was pressed
-if st.session_state.auto_forecast and st.session_state.view != "forecast":
-    st.session_state.view = "forecast"
+# Sync view after stop
+if st.session_state.auto_forecast:
     st.session_state.auto_forecast = False
-    st.rerun()
 
 # ──────────────────────────────────────────
 # PLOTLY THEME HELPER
@@ -604,60 +592,185 @@ if st.session_state.view == "live":
 elif st.session_state.view == "forecast":
     st.markdown("### 📈 Forecasting – Scenario Analysis")
 
-    came_from_live = (
-        st.session_state.live_stopped_at is not None
-        and st.session_state.live_stopped_level is not None
-    )
+    last_hist_date = df["date"].max()
+    fc_future = fc[fc["date"] > last_hist_date].copy()
 
+    # ── Banner: came from Live stop? ──
+    came_from_live = (st.session_state.live_stopped_at is not None)
     if came_from_live:
-        stop_date = pd.Timestamp(st.session_state.live_stopped_at)
-        stop_level = float(st.session_state.live_stopped_level)
-
+        stopped_date_str  = pd.Timestamp(st.session_state.live_stopped_at).strftime("%Y-%m-%d")
+        stopped_level_val = st.session_state.live_stopped_level
         st.markdown(f"""
-        <div style="background:#fff7ed;border:1px solid #fdba74;
-                    border-left:5px solid #f97316;padding:12px 16px;
-                    border-radius:8px;margin-bottom:16px;
-                    font-family:'IBM Plex Mono', monospace;">
-            ⏸️ Live stopped at <b>{stop_date.strftime('%Y-%m-%d')}</b>
-            — level <b>{stop_level:.2f} m</b><br>
-            Forecast has been recalculated from this exact point.
+        <div style="background:#fffbeb;border:1px solid #f59e0b;border-left:5px solid #f59e0b;
+                    border-radius:8px;padding:10px 16px;margin-bottom:12px;
+                    font-family:'IBM Plex Mono',monospace;font-size:0.82rem;color:#92400e;">
+            ⏸️ <strong>Live stopped at {stopped_date_str}</strong> — level {stopped_level_val:.2f} m
+            &nbsp;|&nbsp; Forecast recalculated from this point ↓
         </div>
         """, unsafe_allow_html=True)
-    else:
-        stop_date = df["date"].iloc[-1]
-        stop_level = float(df["niveau_nappe"].iloc[-1])
 
-    c1, c2 = st.columns([3, 1])
-
-    with c1:
+    # Controls row
+    fc1, fc2, fc3 = st.columns([2, 1, 1])
+    with fc1:
         scenario_choice = st.multiselect(
-            "Scenarios to display",
+            "Active Scenarios",
             ["dry", "medium", "wet"],
             default=["dry", "medium", "wet"]
         )
+    with fc2:
+        # Pre-check if we came from live
+        add_stop_point = st.checkbox("➕ Add / update stop point", value=came_from_live)
+    with fc3:
+        if add_stop_point:
+            default_date  = pd.Timestamp(st.session_state.live_stopped_at).date() if came_from_live else last_hist_date.date()
+            default_level = st.session_state.live_stopped_level if came_from_live else float(df["niveau_nappe"].iloc[-1])
+            extra_date    = st.date_input("Stop date", value=default_date)
+            extra_level   = st.number_input("Level (m)", value=float(default_level), step=0.1)
 
-    with c2:
-        horizon_days = st.slider(
-            "Forecast horizon (days)",
-            min_value=30,
-            max_value=730,
-            value=365,
-            step=30
+    # ── TOP: historical + forecast ──
+    fig_top = go.Figure()
+    # Historical
+    fig_top.add_trace(go.Scatter(
+        x=df["date"], y=df["niveau_nappe"],
+        mode="lines", name="Historical",
+        line=dict(color="#388bfd", width=2)
+    ))
+
+    sc_colors = {"dry": "#94a3b8", "medium": "#f59e0b", "wet": "#34d399"}
+    for sc in scenario_choice:
+        sc_data = fc_future[fc_future["scenario"] == sc]
+        if not sc_data.empty:
+            fig_top.add_trace(go.Scatter(
+                x=sc_data["date"], y=sc_data["niveau_nappe"],
+                mode="lines", name=f"Forecast: {sc.capitalize()}",
+                line=dict(color=sc_colors[sc], width=2, dash="dot"), opacity=0.9
+            ))
+
+    # Stop point on top chart
+    if add_stop_point:
+        extra_ts = pd.Timestamp(extra_date)
+        fig_top.add_trace(go.Scatter(
+            x=[extra_ts], y=[extra_level],
+            mode="markers+text",
+            marker=dict(size=14, color="#f43f5e", symbol="star"),
+            text=[f" Stop {extra_level:.2f}m"], textposition="top right",
+            textfont=dict(color="#f43f5e", size=10),
+            name="Stop point"
+        ))
+        fig_top.add_shape(type="line",
+            x0=str(extra_ts.date()), x1=str(extra_ts.date()), y0=0, y1=1,
+            xref="x", yref="paper",
+            line=dict(color="#f43f5e", width=1, dash="dot")
+        )
+        fig_top.add_annotation(
+            x=str(extra_ts.date()), y=1.02, xref="x", yref="paper",
+            text="Stop → recalculated", showarrow=False,
+            font=dict(color="#f43f5e", size=9), xanchor="left"
         )
 
-    # Dates du nouveau forecast
-    forecast_dates = pd.date_range(
-        start=stop_date,
-        periods=horizon_days,
-        freq="D"
-    )
+    add_threshold_line(fig_top, threshold)
+    apply_theme(fig_top)
+    fig_top.update_layout(height=350, title="Historical + Forecast Scenarios")
+    st.plotly_chart(fig_top, use_container_width=True)
 
-    # ── Graphique haut : historique + stop + forecast ──
-    fig_top = go.Figure()
+    # ── BOTTOM: forecast detail window ──
+    st.markdown("#### 🔍 Forecast Detail Window")
+    sc_colors = {"dry": "#94a3b8", "medium": "#f59e0b", "wet": "#34d399"}
+    fig_bot = go.Figure()
 
-    fig_top.add_trace(go.Scatter(
-        x=df["date"],
+    if add_stop_point:
+        # Génère les courbes directement depuis le point de stop (indépendant de fc_future)
+        extra_ts = pd.Timestamp(extra_date)
+        extra_lv = float(extra_level)
+        horizon  = 365
+
+        recompute_dates = pd.date_range(start=extra_ts, periods=horizon, freq="D")
+        n_pts = len(recompute_dates)
+        rng   = np.random.default_rng(seed=42)
+
+        for sc, annual_drift in [("dry", +0.8), ("medium", 0.0), ("wet", -0.6)]:
+            if sc not in scenario_choice:
+                continue
+            t            = np.linspace(0, 1, n_pts)
+            trend        = annual_drift * t
+            seasonal     = 0.8 * np.sin(2 * np.pi * t)
+            noise        = rng.normal(0, 0.08, n_pts)
+            smooth_noise = np.cumsum(noise) * 0.015
+            vals         = extra_lv + trend + seasonal + smooth_noise
+            band_w       = 0.05 + 0.7 * t
+            dates_list   = list(recompute_dates)
+            fig_bot.add_trace(go.Scatter(
+                x=dates_list + dates_list[::-1],
+                y=list(vals + band_w) + list((vals - band_w)[::-1]),
+                fill="toself", fillcolor=sc_colors[sc],
+                opacity=0.15, line=dict(width=0),
+                showlegend=False, hoverinfo="skip"
             ))
+            fig_bot.add_trace(go.Scatter(
+                x=recompute_dates, y=vals,
+                mode="lines", name=sc.capitalize(),
+                line=dict(color=sc_colors[sc], width=2.5)
+            ))
+
+        fig_bot.add_trace(go.Scatter(
+            x=[extra_ts], y=[extra_lv],
+            mode="markers+text",
+            marker=dict(size=14, color="#f43f5e", symbol="star"),
+            text=[f"  {extra_lv:.2f} m"], textposition="middle right",
+            textfont=dict(color="#f43f5e", size=11, family="IBM Plex Mono"),
+            name="Stop point"
+        ))
+        fig_bot.add_shape(type="line",
+            x0=str(extra_ts.date()), x1=str(extra_ts.date()), y0=0, y1=1,
+            xref="x", yref="paper",
+            line=dict(color="#f43f5e", width=1.5, dash="dot")
+        )
+        fig_bot.add_annotation(
+            x=str(extra_ts.date()), y=1.04, xref="x", yref="paper",
+            text="▶ Forecast from stop", showarrow=False,
+            font=dict(color="#f43f5e", size=10, family="IBM Plex Mono"), xanchor="left"
+        )
+        fig_bot.update_xaxes(range=[str(extra_ts.date()), str(recompute_dates[-1].date())])
+        fig_bot.update_layout(height=350, title="Forecast from Stop Point (1 year horizon)")
+
+    else:
+        if not fc_future.empty:
+            for sc in scenario_choice:
+                sc_data = fc_future[fc_future["scenario"] == sc].copy().sort_values("date")
+                if not sc_data.empty:
+                    dates_list = list(sc_data["date"])
+                    vals_list  = list(sc_data["niveau_nappe"])
+                    fig_bot.add_trace(go.Scatter(
+                        x=dates_list + dates_list[::-1],
+                        y=[v+0.4 for v in vals_list] + [v-0.4 for v in vals_list[::-1]],
+                        fill="toself", fillcolor=sc_colors[sc],
+                        opacity=0.12, line=dict(width=0), showlegend=False
+                    ))
+                    fig_bot.add_trace(go.Scatter(
+                        x=sc_data["date"], y=sc_data["niveau_nappe"],
+                        mode="lines", name=sc.capitalize(),
+                        line=dict(color=sc_colors[sc], width=2)
+                    ))
+        else:
+            st.info("Run the live simulation and press Stop to generate a forecast from that point.")
+        fig_bot.update_layout(height=350, title="Forecast Scenarios (from end of history)")
+
+    add_threshold_line(fig_bot, threshold)
+    apply_theme(fig_bot)
+    st.plotly_chart(fig_bot, use_container_width=True)
+
+    # Summary metrics
+    if not fc_future.empty:
+        st.markdown("#### 📊 End-of-Period Forecast Summary")
+        mc1, mc2, mc3 = st.columns(3)
+        for col_m, sc in zip([mc1, mc2, mc3], ["dry", "medium", "wet"]):
+            sc_end = fc_future[fc_future["scenario"] == sc]
+            if not sc_end.empty:
+                val = sc_end["niveau_nappe"].iloc[-1]
+                delta_val = val - current_level
+                col_m.metric(f"{sc.capitalize()} Scenario", f"{val:.2f} m",
+                             delta=f"{delta_val:+.2f} m vs now")
+
 # ──────────────────────────────────────────
 # ── VIEW 3 : FULL HISTORY ──
 # ──────────────────────────────────────────
