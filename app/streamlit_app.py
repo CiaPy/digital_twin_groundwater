@@ -317,61 +317,47 @@ else:
     pump_label = "PUMP 2 ON" if pump_on else "PUMP 2 – STOPPED"
     pump_cls   = "pump-on" if pump_on else "pump-off"
 
-# ── HEADER BAND ──
-view_labels = {"live": "1", "forecast": "2", "history": "3"}
-dots_html = "".join(
-    f'<div class="dot-nav {"active" if st.session_state.view == vn else ""}" title="{vn}"></div>'
-    for vn in ["live", "forecast", "history"]
-)
-st.markdown(f"""
-<div class="header-band">
-    <div><span class="pump-badge {pump_cls}">⚡ {pump_label}</span></div>
-    <div class="dots-nav">
-        {dots_html}
-        <span style="font-family:monospace;font-size:0.72rem;color:#4a80f5;margin-left:6px;">
-            view {view_labels.get(st.session_state.view,'?')}
-        </span>
+# ── DISPLAY LEVEL : piezometric reading + nav buttons only ──
+# Use live_stopped_at if available (during/after live), else last data point
+display_date  = pd.Timestamp(st.session_state.live_stopped_at) if st.session_state.live_stopped_at else current_date
+display_level = st.session_state.live_stopped_level if st.session_state.live_stopped_level else current_level
+level_status  = "▲ above threshold" if display_level > threshold else "▼ below threshold"
+level_color   = "#16a34a" if display_level > threshold else "#dc2626"
+
+top_left, top_right = st.columns([2, 1])
+with top_left:
+    nav1, nav2, nav3 = st.columns(3)
+    with nav1:
+        if st.button("📡 Live", use_container_width=True,
+                     type="primary" if st.session_state.view == "live" else "secondary"):
+            st.session_state.view = "live"
+    with nav2:
+        if st.button("📈 Forecasting", use_container_width=True,
+                     type="primary" if st.session_state.view == "forecast" else "secondary"):
+            st.session_state.view = "forecast"
+    with nav3:
+        if st.button("📋 History", use_container_width=True,
+                     type="primary" if st.session_state.view == "history" else "secondary"):
+            st.session_state.view = "history"
+
+with top_right:
+    st.markdown(f"""
+    <div style="background:white;border:1px solid #d0d9e8;border-left:4px solid {level_color};
+                border-radius:8px;padding:10px 16px;font-family:'IBM Plex Mono',monospace;">
+        <div style="font-size:0.7rem;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:4px;">
+            Current piezometric level
+        </div>
+        <div style="font-size:1.4rem;font-weight:600;color:{level_color};">
+            💧 {display_level:.2f} m
+        </div>
+        <div style="font-size:0.72rem;color:#64748b;margin-top:3px;">
+            📅 {display_date.strftime('%Y-%m-%d')} &nbsp;·&nbsp;
+            <span style="color:{level_color};">{level_status}</span>
+        </div>
     </div>
-    <div><span class="level-badge">📅 {current_date.strftime('%Y-%m-%d')} &nbsp;|&nbsp; 💧 {current_level:.2f} m</span></div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-# ── VIEW SELECTOR ──
-# FIX: use st.columns + st.button (no raw HTML rendering issue)
-nav1, nav2, nav3 = st.columns(3)
-with nav1:
-    if st.button("📡 Live", use_container_width=True,
-                 type="primary" if st.session_state.view == "live" else "secondary"):
-        st.session_state.view = "live"
-with nav2:
-    if st.button("📈 Forecasting", use_container_width=True,
-                 type="primary" if st.session_state.view == "forecast" else "secondary"):
-        st.session_state.view = "forecast"
-with nav3:
-    if st.button("📋 History", use_container_width=True,
-                 type="primary" if st.session_state.view == "history" else "secondary"):
-        st.session_state.view = "history"
-
-# Pump status badges (clean, no raw HTML)
-b1, b2 = st.columns(2)
-p1_color = "#16a34a" if st.session_state.pump1 else "#dc2626"
-p2_color = "#16a34a" if st.session_state.pump2 else "#dc2626"
-p1_state = "ON" if st.session_state.pump1 else "OFF"
-p2_state = "ON" if st.session_state.pump2 else "OFF"
-with b1:
-    st.markdown(
-        f'<div style="background:{p1_color};color:white;padding:6px 10px;border-radius:6px;'
-        f'font-family:monospace;font-size:0.8rem;text-align:center;">⚡ Pump 1 {p1_state}</div>',
-        unsafe_allow_html=True
-    )
-with b2:
-    st.markdown(
-        f'<div style="background:{p2_color};color:white;padding:6px 10px;border-radius:6px;'
-        f'font-family:monospace;font-size:0.8rem;text-align:center;">⚡ Pump 2 {p2_state}</div>',
-        unsafe_allow_html=True
-    )
-
-st.markdown("<div style='margin-bottom:14px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
 
 # Auto-switch after Stop
 if st.session_state.auto_forecast:
@@ -567,8 +553,8 @@ elif st.session_state.view == "forecast":
             font=dict(color="#f43f5e", size=9), xanchor="left")
     add_threshold_line(fig_top, threshold)
     apply_theme(fig_top)
-    #fig_top.update_layout(height=320, title="Historical + Forecast Scenarios")
-    #st.plotly_chart(fig_top, use_container_width=True)
+    fig_top.update_layout(height=320, title="Historical + Forecast Scenarios")
+    st.plotly_chart(fig_top, use_container_width=True)
 
     # ── Graphique bas : forecast depuis stop ──
     st.markdown("#### 🔍 Forecast Detail Window")
