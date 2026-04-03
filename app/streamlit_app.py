@@ -567,8 +567,8 @@ elif st.session_state.view == "forecast":
             font=dict(color="#f43f5e", size=9), xanchor="left")
     add_threshold_line(fig_top, threshold)
     apply_theme(fig_top)
-    fig_top.update_layout(height=320, title="Historical + Forecast Scenarios")
-    st.plotly_chart(fig_top, use_container_width=True)
+    #fig_top.update_layout(height=320, title="Historical + Forecast Scenarios")
+    #st.plotly_chart(fig_top, use_container_width=True)
 
     # ── Graphique bas : forecast depuis stop ──
     st.markdown("#### 🔍 Forecast Detail Window")
