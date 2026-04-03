@@ -215,64 +215,11 @@ with st.sidebar:
     p1_lbl = "ON"  if st.session_state.pump1 else "OFF"
     p2_lbl = "ON"  if st.session_state.pump2 else "OFF"
 
-    st.markdown(f"""
-    <svg viewBox="0 0 260 230" xmlns="http://www.w3.org/2000/svg"
-         style="width:100%;border-radius:8px;border:1px solid #d0d9e8;background:#eef4e8;">
-      <!-- Contours topo -->
-      <ellipse cx="130" cy="118" rx="118" ry="90" fill="none" stroke="#c8d8a8" stroke-width="0.8" stroke-dasharray="4,3"/>
-      <ellipse cx="130" cy="118" rx="85"  ry="65" fill="none" stroke="#bece98" stroke-width="0.8" stroke-dasharray="4,3"/>
-      <ellipse cx="130" cy="118" rx="52"  ry="40" fill="none" stroke="#b4c488" stroke-width="0.8" stroke-dasharray="4,3"/>
-      <!-- Route D120 -->
-      <path d="M12 72 Q130 78 248 70" fill="none" stroke="#f5c842" stroke-width="7" opacity="0.85"/>
-      <text x="130" y="67" text-anchor="middle" fill="#78620a" font-size="7" font-family="monospace">D120</text>
-      <!-- Station traitement -->
-      <rect x="110" y="18" width="40" height="28" rx="3" fill="#94a3b8" stroke="#64748b" stroke-width="0.5"/>
-      <rect x="118" y="14" width="24" height="7" rx="1" fill="#64748b"/>
-      <text x="130" y="56" text-anchor="middle" fill="#475569" font-size="6" font-family="monospace">Station</text>
-      <!-- Ligne de sol -->
-      <line x1="12" y1="130" x2="248" y2="130" stroke="#94a3b8" stroke-width="0.8" stroke-dasharray="5,3"/>
-      <text x="16" y="127" fill="#64748b" font-size="6" font-family="monospace">Sol</text>
-      <!-- Aquifere -->
-      <ellipse cx="130" cy="185" rx="105" ry="30" fill="#bfdbfe" opacity="0.5"/>
-      <text x="130" y="189" text-anchor="middle" fill="#1e40af" font-size="6" font-family="monospace">Aquifere / Nappe phréatique</text>
-      <!-- PUMP 1 forage -->
-      <rect x="64" y="130" width="4" height="50" rx="2" fill="#6b7280" opacity="0.7"/>
-      <rect x="58" y="148" width="3" height="32" rx="1" fill="#92400e" opacity="0.6"/>
-      <!-- PUMP 1 tête -->
-      <rect x="50" y="114" width="32" height="17" rx="3" fill="{p1_col}" stroke="white" stroke-width="1"/>
-      <text x="66" y="126" text-anchor="middle" fill="white" font-size="6" font-weight="bold" font-family="monospace">P1 {p1_lbl}</text>
-      <!-- Tuyau P1 → Station -->
-      <path d="M66 114 L66 95 L118 95 L118 46" fill="none" stroke="{p1_col}" stroke-width="1.8"/>
-      <polygon points="115,46 118,40 121,46" fill="{p1_col}"/>
-      <!-- Ondes P1 -->
-      <ellipse cx="66" cy="170" rx="14" ry="6" fill="{p1_col}" opacity="0.25"/>
-      <ellipse cx="66" cy="178" rx="10" ry="4" fill="{p1_col}" opacity="0.15"/>
-      <!-- PUMP 2 forage -->
-      <rect x="192" y="130" width="4" height="50" rx="2" fill="#6b7280" opacity="0.7"/>
-      <rect x="198" y="148" width="3" height="32" rx="1" fill="#92400e" opacity="0.6"/>
-      <!-- PUMP 2 tête -->
-      <rect x="178" y="114" width="32" height="17" rx="3" fill="{p2_col}" stroke="white" stroke-width="1"/>
-      <text x="194" y="126" text-anchor="middle" fill="white" font-size="6" font-weight="bold" font-family="monospace">P2 {p2_lbl}</text>
-      <!-- Tuyau P2 → Station -->
-      <path d="M194 114 L194 95 L142 95 L142 46" fill="none" stroke="{p2_col}" stroke-width="1.8"/>
-      <polygon points="139,46 142,40 145,46" fill="{p2_col}"/>
-      <!-- Ondes P2 -->
-      <ellipse cx="194" cy="170" rx="14" ry="6" fill="{p2_col}" opacity="0.25"/>
-      <ellipse cx="194" cy="178" rx="10" ry="4" fill="{p2_col}" opacity="0.15"/>
-      <!-- Nord -->
-      <text x="20" y="100" fill="#334155" font-size="9" font-weight="bold" font-family="monospace">N</text>
-      <line x1="23" y1="103" x2="23" y2="114" stroke="#334155" stroke-width="1.2"/>
-      <polygon points="20,114 23,120 26,114" fill="#334155"/>
-      <!-- Légende -->
-      <rect x="14" y="196" width="105" height="26" rx="3" fill="white" stroke="#e2e8f0" stroke-width="0.5" opacity="0.9"/>
-      <rect x="20" y="203" width="9" height="9" rx="2" fill="#16a34a"/>
-      <text x="33" y="211" fill="#334155" font-size="6" font-family="monospace">Active</text>
-      <rect x="60" y="203" width="9" height="9" rx="2" fill="#dc2626"/>
-      <text x="73" y="211" fill="#334155" font-size="6" font-family="monospace">Inactive</text>
-      <rect x="20" y="213" width="3" height="8" rx="1" fill="#92400e" opacity="0.7"/>
-      <text x="27" y="220" fill="#334155" font-size="6" font-family="monospace">Piézomètre</text>
-    </svg>
-    """, unsafe_allow_html=True)
+    from pathlib import Path
+
+    
+    img_path = Path(__file__).parent / "site_overview.png"
+    st.image(str(img_path), use_container_width=True)
 
     # ── Rapport ──
     st.markdown("---")
@@ -553,8 +500,8 @@ elif st.session_state.view == "forecast":
             font=dict(color="#f43f5e", size=9), xanchor="left")
     add_threshold_line(fig_top, threshold)
     apply_theme(fig_top)
-    fig_top.update_layout(height=320, title="Historical + Forecast Scenarios")
-    st.plotly_chart(fig_top, use_container_width=True)
+    #fig_top.update_layout(height=320, title="Historical + Forecast Scenarios")
+    #st.plotly_chart(fig_top, use_container_width=True)
 
     # ── Graphique bas : forecast depuis stop ──
     st.markdown("#### 🔍 Forecast Detail Window")
