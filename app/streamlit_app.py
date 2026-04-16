@@ -271,21 +271,63 @@ display_level = st.session_state.live_stopped_level if st.session_state.live_sto
 level_status  = "▲ above threshold" if display_level > threshold else "▼ below threshold"
 level_color   = "#16a34a" if display_level > threshold else "#dc2626"
 
-top_left, top_right = st.columns([2, 1])
-with top_left:
-    nav1, nav2, nav3 = st.columns(3)
-    with nav1:
-        if st.button("📡 Live", use_container_width=True,
-                     type="primary" if st.session_state.view == "live" else "secondary"):
-            st.session_state.view = "live"
-    with nav2:
-        if st.button("📈 Forecasting", use_container_width=True,
-                     type="primary" if st.session_state.view == "forecast" else "secondary"):
-            st.session_state.view = "forecast"
-    with nav3:
-        if st.button("📋 History", use_container_width=True,
-                     type="primary" if st.session_state.view == "history" else "secondary"):
-            st.session_state.view = "history"
+# ── HEADER BAND : Pump badge | dots nav | level badge ──
+view_labels = ["live", "forecast", "history"]
+
+# Pump badge
+if not any_pump_active:
+    pump_html_cls, pump_html_txt = "pump-off", "ALL PUMPS OFF"
+elif st.session_state.pump1 and st.session_state.pump2:
+    pump_html_cls = "pump-on" if pump_on else "pump-off"
+    pump_html_txt = "PUMP 1 + 2 ON" if pump_on else "PUMP 1 + 2 – STOPPED"
+elif st.session_state.pump1:
+    pump_html_cls = "pump-on" if pump_on else "pump-off"
+    pump_html_txt = "PUMP 1 ON" if pump_on else "PUMP 1 – STOPPED"
+else:
+    pump_html_cls = "pump-on" if pump_on else "pump-off"
+    pump_html_txt = "PUMP 2 ON" if pump_on else "PUMP 2 – STOPPED"
+
+# Dots : build active state
+dot_html = ""
+for v in view_labels:
+    active_cls = "dot-nav active" if st.session_state.view == v else "dot-nav"
+    dot_html += f'<div class="{active_cls}" title="{v}"></div>'
+
+# Level badge color
+level_color_badge = "#0f7a35" if display_level > threshold else "#7c1d1d"
+level_border_badge = "#22c55e" if display_level > threshold else "#ef4444"
+level_text_badge   = "#86efac" if display_level > threshold else "#fca5a5"
+
+st.markdown(f"""
+<div class="header-band">
+    <span class="pump-badge {pump_html_cls}">{pump_html_txt}</span>
+    <div class="dots-nav">{dot_html}</div>
+    <span class="pump-badge" style="
+        background:{level_color_badge};
+        border:1px solid {level_border_badge};
+        color:{level_text_badge};
+        font-size:0.82rem;">
+        📅 {display_date.strftime('%Y-%m-%d')} &nbsp;·&nbsp; 💧 {display_level:.2f} m
+    </span>
+</div>
+""", unsafe_allow_html=True)
+
+# ── NAV BUTTONS (discrets, sous le bandeau) ──
+nav1, nav2, nav3 = st.columns(3)
+with nav1:
+    if st.button("📡 Live", use_container_width=True,
+                 type="primary" if st.session_state.view == "live" else "secondary"):
+        st.session_state.view = "live"
+with nav2:
+    if st.button("📈 Forecasting", use_container_width=True,
+                 type="primary" if st.session_state.view == "forecast" else "secondary"):
+        st.session_state.view = "forecast"
+with nav3:
+    if st.button("📋 History", use_container_width=True,
+                 type="primary" if st.session_state.view == "history" else "secondary"):
+        st.session_state.view = "history"
+
+st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
 
 with top_right:
     st.markdown(f"""
