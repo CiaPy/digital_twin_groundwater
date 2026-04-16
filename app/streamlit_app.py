@@ -218,6 +218,8 @@ with st.sidebar:
     st.markdown("### 📄 Automatic Report")
     if st.button("📥 Generate PDF Report", use_container_width=True):
         with st.spinner("Building report — rendering charts..."):
+            import sys, os
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
             from pdf_report import generate_pdf_report
             pdf_bytes = generate_pdf_report(
                 df=df,
