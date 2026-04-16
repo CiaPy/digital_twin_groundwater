@@ -148,7 +148,7 @@ def _data_table_landscape(df_in: pd.DataFrame, styles, rows_per_page=35):
     col_names = list(df_in.columns)
     n_cols = len(col_names)
     # Landscape A4 usable width
-    page_w = 27.7 * cm
+    page_w = 24 * cm
     col_w  = page_w / n_cols
 
     chunks = [df_in.iloc[i:i+rows_per_page] for i in range(0, len(df_in), rows_per_page)]
@@ -559,7 +559,7 @@ def generate_pdf_report(
 
     # ── Page templates ──
     portrait_frame  = Frame(1.5*cm, 2*cm, 18*cm, 25*cm, id="portrait_frame")
-    landscape_frame = Frame(1.5*cm, 2*cm, 27.7*cm, 18*cm, id="landscape_frame")
+    landscape_frame = Frame(2.5*cm, 2*cm, 24.0*cm, 18*cm, id="landscape_frame")
 
     portrait_tpl  = PageTemplate(id="portrait",  frames=[portrait_frame],
                                   pagesize=A4, onPage=_make_footer)
