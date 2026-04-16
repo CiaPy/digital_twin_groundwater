@@ -398,7 +398,7 @@ if st.session_state.view == "live":
             apply_theme(fig_frozen)
             fig_frozen.update_layout(
                 height=420, uirevision="frozen",
-                title="Live simulation — stopped (click 📈 Forecasting to see scenarios)",
+                title=" ",
                 xaxis=dict(range=[sim_df["date"].min(), sim_df["date"].max()])
             )
             chart_ph.plotly_chart(fig_frozen, use_container_width=True,
