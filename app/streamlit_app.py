@@ -329,24 +329,6 @@ with nav3:
 
 st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
 
-with top_right:
-    st.markdown(f"""
-    <div style="background:white;border:1px solid #d0d9e8;border-left:4px solid {level_color};
-                border-radius:8px;padding:10px 16px;font-family:'IBM Plex Mono',monospace;">
-        <div style="font-size:0.7rem;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:4px;">
-            Current piezometric level
-        </div>
-        <div style="font-size:1.4rem;font-weight:600;color:{level_color};">
-            💧 {display_level:.2f} m
-        </div>
-        <div style="font-size:0.72rem;color:#64748b;margin-top:3px;">
-            📅 {display_date.strftime('%Y-%m-%d')} &nbsp;·&nbsp;
-            <span style="color:{level_color};">{level_status}</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
 
 # Auto-switch after Stop
 if st.session_state.auto_forecast:
