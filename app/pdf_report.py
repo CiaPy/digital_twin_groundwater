@@ -573,12 +573,13 @@ def generate_pdf_report(
         author="Digital Twin System",
     )
 
+
     story = []
     _cover(story, styles_obj := _styles(), meta)
     _section_live(story, styles_obj, df, threshold, ref_ts, ref_level, any_pump, was_stopped)
     _section_forecast(story, styles_obj, threshold, ref_ts, ref_level)
     _section_history_portrait(story, styles_obj, df, threshold, ref_ts)
-    _section_history_landscape(story, styles_obj, df, control_log)
-
+    _section_history_landscape(story, styles_obj, control_log)  # ← control_log seulement
+    
     doc.build(story)
     return buf.getvalue()
