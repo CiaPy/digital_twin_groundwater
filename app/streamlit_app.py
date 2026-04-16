@@ -202,7 +202,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🗺️ Site Overview")
     from pathlib import Path
-    img_path = Path(__file__).parent / "site_overview.png"
+    img_path = Path(__file__).parent / "site_overview(1).png"
     if img_path.exists():
         st.image(str(img_path), use_container_width=True)
 
