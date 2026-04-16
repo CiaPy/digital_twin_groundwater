@@ -134,7 +134,7 @@ with st.sidebar:
     st.markdown("### ⚙️ Control Panel")
     st.markdown("---")
     threshold = st.number_input("🎯 Critical Threshold (m)", value=114.2, step=0.1, format="%.1f")
-    sim_speed = st.slider("⚡ Simulation Speed (days/s)", 1, 60, 15)
+    sim_speed = st.slider("⚡ Simulation Speed (days/s)", 1, 10, 5)
     st.markdown("---")
     st.markdown("### 🔧 Pump Control")
     mode = st.radio("Operation Mode", ["Automatic", "Manual"],
