@@ -213,29 +213,29 @@ with st.sidebar:
     if img_path.exists():
         st.image(str(img_path), use_container_width=True)
 
+    # ── Rapport ──
     st.markdown("---")
     st.markdown("### 📄 Automatic Report")
     if st.button("📥 Generate PDF Report", use_container_width=True):
-        report_lines = [
-            "GROUNDWATER DIGITAL TWIN – AUTO REPORT",
-            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-            "=" * 40,
-            f"Current Level : {df['niveau_nappe'].iloc[-1]:.2f} m",
-            f"Critical Threshold : {threshold:.2f} m",
-            f"Pump 1 : {'ACTIVE' if p1 else 'INACTIVE'}",
-            f"Pump 2 : {'ACTIVE' if p2 else 'INACTIVE'}",
-            f"Mode : {mode}", "",
-            "ACTION LOG (last 10):",
-        ]
-        for entry in st.session_state.control_log[-10:]:
-            report_lines.append(
-                f"  {entry.get('time','')} | {entry.get('action','')} | Level={entry.get('level',0):.2f}m"
+        with st.spinner("Building report — rendering charts..."):
+            from pdf_report import generate_pdf_report
+            pdf_bytes = generate_pdf_report(
+                df=df,
+                fc=fc,
+                threshold=threshold,
+                pump1=st.session_state.pump1,
+                pump2=st.session_state.pump2,
+                mode=mode,
+                control_log=st.session_state.control_log,
+                live_stopped_at=st.session_state.live_stopped_at,
+                live_stopped_level=st.session_state.live_stopped_level,
             )
         st.download_button(
-            "⬇️ Download Report (.txt)",
-            data="\n".join(report_lines),
-            file_name=f"groundwater_report_{datetime.now().strftime('%Y%m%d_%H%M')}.txt",
-            mime="text/plain", use_container_width=True
+            label="⬇️ Download PDF Report",
+            data=pdf_bytes,
+            file_name=f"groundwater_report_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+            mime="application/pdf",
+            use_container_width=True
         )
 
 # ── CURRENT STATE ──
