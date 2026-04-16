@@ -579,7 +579,6 @@ def generate_pdf_report(
     _section_forecast(story, styles_obj, threshold, ref_ts, ref_level)
     _section_history_portrait(story, styles_obj, df, threshold, ref_ts)
     _section_history_landscape(story, styles_obj, df, threshold, ref_ts)
-    _section_log(story, styles_obj, control_log)
 
     doc.build(story)
     return buf.getvalue()
