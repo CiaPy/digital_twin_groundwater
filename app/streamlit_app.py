@@ -283,20 +283,25 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+
+
 # ── NAV BUTTONS ──
 nav1, nav2, nav3 = st.columns(3)
 with nav1:
     if st.button("📡 Live", use_container_width=True,
                  type="primary" if st.session_state.view == "live" else "secondary"):
         st.session_state.view = "live"
+        st.rerun()
 with nav2:
     if st.button("📈 Forecasting", use_container_width=True,
                  type="primary" if st.session_state.view == "forecast" else "secondary"):
         st.session_state.view = "forecast"
+        st.rerun()
 with nav3:
     if st.button("📋 History", use_container_width=True,
                  type="primary" if st.session_state.view == "history" else "secondary"):
         st.session_state.view = "history"
+        st.rerun()
 
 st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
 
