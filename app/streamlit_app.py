@@ -172,7 +172,6 @@ with st.sidebar:
             st.session_state.live_stopped_level = (
                 st.session_state.live_stopped_level or float(df["niveau_nappe"].iloc[-1])
             )
-            # NE PAS changer view, NE PAS rerun → on reste sur live avec le graph figé
             st.session_state.control_log.append({
                 "time": datetime.now().strftime("%H:%M:%S"),
                 "action": "Live STOP → Forecast ready",
@@ -202,18 +201,11 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### 🗺️ Site Overview")
-
-    p1_col = "#16a34a" if st.session_state.pump1 else "#dc2626"
-    p2_col = "#16a34a" if st.session_state.pump2 else "#dc2626"
-    p1_lbl = "ON" if st.session_state.pump1 else "OFF"
-    p2_lbl = "ON" if st.session_state.pump2 else "OFF"
-
     from pathlib import Path
     img_path = Path(__file__).parent / "site_overview.png"
     if img_path.exists():
         st.image(str(img_path), use_container_width=True)
 
-    # ── Rapport ──
     st.markdown("---")
     st.markdown("### 📄 Automatic Report")
     if st.button("📥 Generate PDF Report", use_container_width=True):
@@ -247,7 +239,6 @@ is_safe         = current_level > threshold
 any_pump_active = st.session_state.pump1 or st.session_state.pump2
 pump_on         = (is_safe and any_pump_active) if mode == "Automatic" else any_pump_active
 
-# Pump label/class
 if not any_pump_active:
     pump_html_cls, pump_html_txt = "pump-off", "ALL PUMPS OFF"
 elif st.session_state.pump1 and st.session_state.pump2:
@@ -260,11 +251,9 @@ else:
     pump_html_cls = "pump-on" if pump_on else "pump-off"
     pump_html_txt = "PUMP 2 ON" if pump_on else "PUMP 2 – STOPPED"
 
-# Display level — live_stopped_at si dispo, sinon dernière valeur
 display_date  = pd.Timestamp(st.session_state.live_stopped_at) if st.session_state.live_stopped_at else current_date
 display_level = st.session_state.live_stopped_level if st.session_state.live_stopped_level else current_level
 
-# Level badge colors
 if display_level > threshold:
     level_color_badge  = "#0f7a35"
     level_border_badge = "#22c55e"
@@ -372,14 +361,12 @@ if st.session_state.view == "live":
         start_btn = st.button("▶️ Start Live Simulation", type="primary")
         chart_ph  = st.empty()
 
-        # Affiche le graph figé au point de stop si on revient sur Live après un Stop
+        # Graph figé au point de stop
         if st.session_state.live_stopped_at and not start_btn:
             stopped_ts  = pd.Timestamp(st.session_state.live_stopped_at)
             stopped_lvl = st.session_state.live_stopped_level
             sub_stopped = sim_df[sim_df["date"] <= stopped_ts]
-            is_safe_stopped = stopped_lvl > threshold
-            dam_state_stopped = "Running" if (is_safe_stopped and any_pump_active) else "Stopped"
-            color_stopped = "#22c55e" if dam_state_stopped == "Running" else "#ef4444"
+            color_stopped = "#22c55e" if (stopped_lvl > threshold and any_pump_active) else "#ef4444"
 
             fig_frozen = go.Figure()
             fig_frozen.add_trace(go.Scatter(
@@ -405,14 +392,15 @@ if st.session_state.view == "live":
             )
             apply_theme(fig_frozen)
             fig_frozen.update_layout(
-                height=420,
+                height=420, uirevision="frozen",
                 title="Live simulation — stopped (click 📈 Forecasting to see scenarios)",
                 xaxis=dict(range=[sim_df["date"].min(), sim_df["date"].max()])
             )
-            chart_ph.plotly_chart(fig_frozen, use_container_width=True)
+            chart_ph.plotly_chart(fig_frozen, use_container_width=True,
+                                  config={"displayModeBar": False})
 
         else:
-            # Graph statique par défaut (avant toute simulation)
+            # Graph statique par défaut
             fig_static = go.Figure()
             fig_static.add_trace(go.Scatter(
                 x=sim_df["date"], y=sim_df["niveau_nappe"],
@@ -421,18 +409,52 @@ if st.session_state.view == "live":
             ))
             add_threshold_line(fig_static, threshold)
             apply_theme(fig_static)
-            fig_static.update_layout(height=420, title="Water Level 2025 (click ▶️ to animate)")
-            chart_ph.plotly_chart(fig_static, use_container_width=True)
+            fig_static.update_layout(
+                height=420, uirevision="static",
+                title="Water Level 2025 (click ▶️ to animate)"
+            )
+            chart_ph.plotly_chart(fig_static, use_container_width=True,
+                                  config={"displayModeBar": False})
 
-        # Animation live
+        # ── ANIMATION LIVE (smooth) ──
         if start_btn and not sim_df.empty:
             log_ph = st.empty()
             state_log, cur_state, period_start = [], None, None
 
+            # Pré-construire la figure une seule fois
+            fig_live = go.Figure()
+            fig_live.add_trace(go.Scatter(          # trace 0 : fond gris
+                x=sim_df["date"], y=sim_df["niveau_nappe"],
+                mode="lines", name="Full year",
+                line=dict(color="#c0c8d8", width=1.5), opacity=0.5
+            ))
+            fig_live.add_trace(go.Scatter(          # trace 1 : simulation
+                x=[], y=[],
+                mode="lines", name="Simulation",
+                line=dict(color="#22c55e", width=2.5)
+            ))
+            fig_live.add_trace(go.Scatter(          # trace 2 : point courant
+                x=[], y=[],
+                mode="markers+text",
+                marker=dict(size=10, color="#f59e0b", symbol="circle"),
+                textposition="top center",
+                textfont=dict(color="#d97706", size=10),
+                name="Now"
+            ))
+            add_threshold_line(fig_live, threshold)
+            apply_theme(fig_live)
+            fig_live.update_layout(
+                height=420,
+                showlegend=True,
+                uirevision="live_chart",   # ← empêche le reset de la vue
+                xaxis=dict(range=[sim_df["date"].min(), sim_df["date"].max()])
+            )
+
             for i, row in sim_df.iterrows():
                 today, lvl = row["date"], row["niveau_nappe"]
-                safe_now  = lvl > threshold
-                dam_state = "Running" if (safe_now and any_pump_active) else "Stopped"
+                safe_now   = lvl > threshold
+                dam_state  = "Running" if (safe_now and any_pump_active) else "Stopped"
+                color_line = "#22c55e" if dam_state == "Running" else "#ef4444"
 
                 st.session_state.live_stopped_at    = today
                 st.session_state.live_stopped_level = float(lvl)
@@ -448,33 +470,31 @@ if st.session_state.view == "live":
                         log_ph.dataframe(pd.DataFrame(state_log), use_container_width=True)
                     cur_state, period_start = dam_state, today
 
-                sub        = sim_df[sim_df["date"] <= today]
-                color_line = "#22c55e" if dam_state == "Running" else "#ef4444"
+                sub = sim_df[sim_df["date"] <= today]
 
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(x=sim_df["date"], y=sim_df["niveau_nappe"],
-                    mode="lines", name="Full year",
-                    line=dict(color="#c0c8d8", width=1.5), opacity=0.5))
-                fig.add_trace(go.Scatter(x=sub["date"], y=sub["niveau_nappe"],
-                    mode="lines", name="Simulation",
-                    line=dict(color=color_line, width=2.5)))
-                fig.add_trace(go.Scatter(
-                    x=[today], y=[lvl], mode="markers+text",
-                    marker=dict(size=10, color="#f59e0b", symbol="circle"),
-                    text=[f"{lvl:.2f}m"], textposition="top center",
-                    textfont=dict(color="#d97706", size=10), name="Now"))
-                add_threshold_line(fig, threshold)
-                fig.add_annotation(
+                # Mise à jour des données sans recréer la figure
+                fig_live.data[1].x = sub["date"]
+                fig_live.data[1].y = sub["niveau_nappe"]
+                fig_live.data[1].line = dict(color=color_line, width=2.5)
+                fig_live.data[2].x = [today]
+                fig_live.data[2].y = [lvl]
+                fig_live.data[2].text = [f"{lvl:.2f}m"]
+
+                # Mise à jour annotation date
+                fig_live.layout.annotations = []
+                fig_live.add_annotation(
                     x=today, y=1.05, xref="x", yref="paper",
                     text=f"📅 {today.strftime('%Y-%m-%d')} | {dam_state}",
                     showarrow=False,
                     font=dict(size=11, color="#d97706", family="IBM Plex Mono"),
                     bgcolor="rgba(255,255,255,0.85)", borderpad=4, xanchor="center"
                 )
-                apply_theme(fig)
-                fig.update_layout(height=420, showlegend=True,
-                                  xaxis=dict(range=[sim_df["date"].min(), sim_df["date"].max()]))
-                chart_ph.plotly_chart(fig, use_container_width=True)
+
+                chart_ph.plotly_chart(
+                    fig_live,
+                    use_container_width=True,
+                    config={"displayModeBar": False}   # ← supprime toolbar = moins de flash
+                )
                 time.sleep(1.0 / sim_speed)
 
             total_run  = sum(x["Days"] for x in state_log if x["Status"] == "Running")
@@ -598,7 +618,6 @@ elif st.session_state.view == "history":
     st.markdown("### 📋 Full Historical Record")
     h1, h2 = st.columns([3, 1])
 
-    # Date max = point de stop si dispo, sinon fin des données
     hist_max = (
         pd.Timestamp(st.session_state.live_stopped_at).date()
         if st.session_state.live_stopped_at
@@ -628,7 +647,6 @@ elif st.session_state.view == "history":
                            annotation_text="Threshold", annotation_position="top left",
                            row=1, col=1)
 
-        # Marque le point de stop sur l'historique si disponible
         if st.session_state.live_stopped_at:
             stop_ts  = pd.Timestamp(st.session_state.live_stopped_at)
             stop_lvl = st.session_state.live_stopped_level
