@@ -209,6 +209,10 @@ else:
     level_border_badge = "#ef4444"
     level_text_badge   = "#fca5a5"
 
+# ── TITLE ──
+st.markdown("# 💧 Synthetic Digital Twin for Groundwater Extraction and Monitoring")
+st.markdown("---")
+
 # ── NAV BUTTONS ──
 nav1, nav2, nav3 = st.columns(3)
 with nav1:
@@ -359,9 +363,11 @@ if st.session_state.view == "live":
                                   config={"displayModeBar": False})
 
             # ── ANIMATION LIVE (smooth) ──
-            sb1, sb2 = st.columns([2, 1])
+            sb1, sb2, sb3 = st.columns([1, 1, 1])
             with sb2:
                 start_btn = st.button("▶️ Start", use_container_width=True, type="primary")
+            with sb3:
+                stop_btn = st.button("■ Stop", use_container_width=True)
 
             if start_btn and not sim_df.empty:
                 state_log, cur_state, period_start = [], None, None
@@ -396,6 +402,17 @@ if st.session_state.view == "live":
                 )
 
                 for i, row in sim_df.iterrows():
+                    # Vérifier si le bouton Stop a été cliqué
+                    if stop_btn:
+                        st.session_state.control_log.append({
+                            "time": datetime.now().strftime("%H:%M:%S"),
+                            "action": "Live STOP → Forecast ready",
+                            "pumps": f"P1={'ON' if st.session_state.pump1 else 'OFF'} P2={'ON' if st.session_state.pump2 else 'OFF'}",
+                            "level": st.session_state.live_stopped_level
+                        })
+                        st.info(f"⏸️ Simulation stopped at {st.session_state.live_stopped_at.strftime('%Y-%m-%d')} | Level {st.session_state.live_stopped_level:.2f} m")
+                        break
+                    
                     today, lvl = row["date"], row["niveau_nappe"]
                     safe_now   = lvl > threshold
                     dam_state  = "Running" if (safe_now and any_pump_active) else "Stopped"
