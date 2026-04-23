@@ -136,15 +136,6 @@ with st.sidebar:
     threshold = st.number_input("🎯 Critical Threshold (m)", value=114.2, step=0.1, format="%.1f")
     sim_speed = st.slider("⚡ Simulation Speed (days/s)", 1, 10, 5)
     st.markdown("---")
-    st.markdown("### 🔧 Pump Control")
-    
-    st.markdown("**Select Active Pump(s)**")
-    p1 = st.checkbox("💧 Pump 1", value=st.session_state.pump1)
-    p2 = st.checkbox("💧 Pump 2", value=st.session_state.pump2)
-    st.session_state.pump1 = p1
-    st.session_state.pump2 = p2
-
-    st.markdown("---")
     st.markdown("### 🗺️ Site Overview")
     from pathlib import Path
     img_path = Path(__file__).parent / "site_overview(1).png"
