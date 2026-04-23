@@ -1,4 +1,4 @@
-import streamlit as st
+=import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -260,7 +260,7 @@ def add_threshold_line(fig, thr):
 # ════════════════════════════════
 if st.session_state.view == "live":
     st.markdown("### 📡 Water Level – Live Simulation (1 year)")
-    sim_start = pd.Timestamp("2025-01-01")
+    sim_start = pd.Timestamp("2025-06-01")
     sim_end   = sim_start + pd.Timedelta(days=365)
     sim_df    = df[(df["date"] >= sim_start) & (df["date"] <= sim_end)].copy()
 
@@ -485,93 +485,39 @@ elif st.session_state.view == "forecast":
         </div>
         """, unsafe_allow_html=True)
 
-    fc1, fc2, fc3 = st.columns([2, 1, 1])
+    fc1, fc2 = st.columns([2, 1])
     with fc1:
         scenario_choice = st.multiselect("Active Scenarios", ["dry", "medium", "wet"],
                                          default=["dry", "medium", "wet"])
-    with fc2:
-        add_stop_point = st.checkbox("➕ Add / update stop point", value=came_from_live)
-    with fc3:
-        if add_stop_point:
-            default_date  = pd.Timestamp(st.session_state.live_stopped_at).date() if came_from_live else last_hist_date.date()
-            default_level = st.session_state.live_stopped_level if came_from_live else float(df["niveau_nappe"].iloc[-1])
-            extra_date    = st.date_input("Stop date", value=default_date)
-            extra_level   = st.number_input("Level (m)", value=float(default_level), step=0.1)
 
     sc_colors = {"dry": "#94a3b8", "medium": "#f59e0b", "wet": "#34d399"}
 
     st.markdown("#### 🔍 Forecast Detail Window")
     fig_bot = go.Figure()
 
-    if add_stop_point:
-        extra_ts = pd.Timestamp(extra_date)
-        extra_lv = float(extra_level)
-        recompute_dates = pd.date_range(start=extra_ts, periods=365, freq="D")
-        n_pts = len(recompute_dates)
-        rng   = np.random.default_rng(seed=42)
-
-        for sc, annual_drift in [("dry", +0.8), ("medium", 0.0), ("wet", -0.6)]:
-            if sc not in scenario_choice:
-                continue
-            t    = np.linspace(0, 1, n_pts)
-            vals = extra_lv + annual_drift*t + 0.8*np.sin(2*np.pi*t) + np.cumsum(rng.normal(0,0.08,n_pts))*0.015
-            bw   = 0.05 + 0.7*t
-            dl   = list(recompute_dates)
-            fig_bot.add_trace(go.Scatter(
-                x=dl + dl[::-1], y=list(vals+bw) + list((vals-bw)[::-1]),
-                fill="toself", fillcolor=sc_colors[sc],
-                opacity=0.15, line=dict(width=0), showlegend=False, hoverinfo="skip"))
-            fig_bot.add_trace(go.Scatter(
-                x=recompute_dates, y=vals,
-                mode="lines", name=sc.capitalize(),
-                line=dict(color=sc_colors[sc], width=2.5)))
-
-        fig_bot.add_trace(go.Scatter(
-            x=[extra_ts], y=[extra_lv], mode="markers+text",
-            marker=dict(size=14, color="#f43f5e", symbol="star"),
-            text=[f"  {extra_lv:.2f} m"], textposition="middle right",
-            textfont=dict(color="#f43f5e", size=11, family="IBM Plex Mono"),
-            name="Stop point"))
-        fig_bot.add_shape(type="line",
-            x0=str(extra_ts.date()), x1=str(extra_ts.date()), y0=0, y1=1,
-            xref="x", yref="paper", line=dict(color="#f43f5e", width=1.5, dash="dot"))
-        fig_bot.add_annotation(
-            x=str(extra_ts.date()), y=1.04, xref="x", yref="paper",
-            text="▶ Forecast from stop", showarrow=False,
-            font=dict(color="#f43f5e", size=10, family="IBM Plex Mono"), xanchor="left")
-        fig_bot.update_xaxes(range=[str(extra_ts.date()), str(recompute_dates[-1].date())])
-        fig_bot.update_layout(height=400, title="Forecast from Stop Point (1 year horizon)")
+    if not fc_future.empty:
+        for sc in scenario_choice:
+            sc_data = fc_future[fc_future["scenario"] == sc].copy().sort_values("date")
+            if not sc_data.empty:
+                dl = list(sc_data["date"]); vl = list(sc_data["niveau_nappe"])
+                fig_bot.add_trace(go.Scatter(
+                    x=dl+dl[::-1], y=[v+0.4 for v in vl]+[v-0.4 for v in vl[::-1]],
+                    fill="toself", fillcolor=sc_colors[sc],
+                    opacity=0.12, line=dict(width=0), showlegend=False))
+                fig_bot.add_trace(go.Scatter(
+                    x=sc_data["date"], y=sc_data["niveau_nappe"],
+                    mode="lines", name=sc.capitalize(),
+                    line=dict(color=sc_colors[sc], width=2)))
     else:
-        if not fc_future.empty:
-            for sc in scenario_choice:
-                sc_data = fc_future[fc_future["scenario"] == sc].copy().sort_values("date")
-                if not sc_data.empty:
-                    dl = list(sc_data["date"]); vl = list(sc_data["niveau_nappe"])
-                    fig_bot.add_trace(go.Scatter(
-                        x=dl+dl[::-1], y=[v+0.4 for v in vl]+[v-0.4 for v in vl[::-1]],
-                        fill="toself", fillcolor=sc_colors[sc],
-                        opacity=0.12, line=dict(width=0), showlegend=False))
-                    fig_bot.add_trace(go.Scatter(
-                        x=sc_data["date"], y=sc_data["niveau_nappe"],
-                        mode="lines", name=sc.capitalize(),
-                        line=dict(color=sc_colors[sc], width=2)))
-        else:
-            st.info("Run the live simulation and press Stop to generate a forecast from that point.")
-        fig_bot.update_layout(height=400, title="Forecast Scenarios (from end of history)")
+        st.info("Run the live simulation and press Stop to generate a forecast from that point.")
+    
+    fig_bot.update_layout(height=400, title="Forecast Scenarios (from end of history)")
 
     add_threshold_line(fig_bot, threshold)
     apply_theme(fig_bot)
     st.plotly_chart(fig_bot, use_container_width=True)
 
-    if not fc_future.empty:
-        st.markdown("#### 📊 End-of-Period Forecast Summary")
-        mc1, mc2, mc3 = st.columns(3)
-        for col_m, sc in zip([mc1, mc2, mc3], ["dry", "medium", "wet"]):
-            sc_end = fc_future[fc_future["scenario"] == sc]
-            if not sc_end.empty:
-                val = sc_end["niveau_nappe"].iloc[-1]
-                col_m.metric(f"{sc.capitalize()} Scenario", f"{val:.2f} m",
-                             delta=f"{val - current_level:+.2f} m vs now")
+
 
 # ════════════════════════════════
 # VIEW 3 : HISTORY
