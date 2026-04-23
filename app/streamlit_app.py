@@ -137,67 +137,12 @@ with st.sidebar:
     sim_speed = st.slider("⚡ Simulation Speed (days/s)", 1, 10, 5)
     st.markdown("---")
     st.markdown("### 🔧 Pump Control")
-    mode = st.radio("Operation Mode", ["Automatic", "Manual"],
-                    index=0 if st.session_state.control_mode == "Automatic" else 1,
-                    horizontal=True)
-    st.session_state.control_mode = mode
-
+    
     st.markdown("**Select Active Pump(s)**")
     p1 = st.checkbox("💧 Pump 1", value=st.session_state.pump1)
     p2 = st.checkbox("💧 Pump 2", value=st.session_state.pump2)
     st.session_state.pump1 = p1
     st.session_state.pump2 = p2
-
-    st.markdown("---")
-    st.markdown("### ▶️ Live Simulation")
-    sb1, sb2 = st.columns(2)
-    with sb1:
-        if st.button("▶ Start", use_container_width=True, type="primary"):
-            st.session_state.sim_running = True
-            st.session_state.live_stopped_at = None
-            st.session_state.live_stopped_level = None
-            st.session_state.view = "live"
-            st.session_state.control_log.append({
-                "time": datetime.now().strftime("%H:%M:%S"),
-                "action": "Live START",
-                "pumps": f"P1={'ON' if p1 else 'OFF'} P2={'ON' if p2 else 'OFF'}",
-                "level": float(df["niveau_nappe"].iloc[-1])
-            })
-    with sb2:
-        if st.button("■ Stop", use_container_width=True):
-            st.session_state.sim_running = False
-            st.session_state.live_stopped_at = (
-                st.session_state.live_stopped_at or df["date"].iloc[-1]
-            )
-            st.session_state.live_stopped_level = (
-                st.session_state.live_stopped_level or float(df["niveau_nappe"].iloc[-1])
-            )
-            st.session_state.control_log.append({
-                "time": datetime.now().strftime("%H:%M:%S"),
-                "action": "Live STOP → Forecast ready",
-                "pumps": f"P1={'ON' if p1 else 'OFF'} P2={'ON' if p2 else 'OFF'}",
-                "level": st.session_state.live_stopped_level
-            })
-
-    if mode == "Manual":
-        st.markdown("**Manual Pump Override**")
-        mc1, mc2 = st.columns(2)
-        with mc1:
-            if st.button("💧 Pump ON", use_container_width=True):
-                st.session_state.control_log.append({
-                    "time": datetime.now().strftime("%H:%M:%S"),
-                    "action": "Manual pump ON",
-                    "pumps": f"P1={'ON' if p1 else 'OFF'} P2={'ON' if p2 else 'OFF'}",
-                    "level": float(df["niveau_nappe"].iloc[-1])
-                })
-        with mc2:
-            if st.button("🚫 Pump OFF", use_container_width=True):
-                st.session_state.control_log.append({
-                    "time": datetime.now().strftime("%H:%M:%S"),
-                    "action": "Manual pump OFF",
-                    "pumps": f"P1={'ON' if p1 else 'OFF'} P2={'ON' if p2 else 'OFF'}",
-                    "level": float(df["niveau_nappe"].iloc[-1])
-                })
 
     st.markdown("---")
     st.markdown("### 🗺️ Site Overview")
@@ -219,7 +164,7 @@ with st.sidebar:
                 threshold=threshold,
                 pump1=st.session_state.pump1,
                 pump2=st.session_state.pump2,
-                mode=mode,
+                mode="Automatic",
                 control_log=st.session_state.control_log,
                 live_stopped_at=st.session_state.live_stopped_at,
                 live_stopped_level=st.session_state.live_stopped_level,
@@ -237,7 +182,8 @@ current_level   = float(df["niveau_nappe"].iloc[-1])
 current_date    = df["date"].iloc[-1]
 is_safe         = current_level > threshold
 any_pump_active = st.session_state.pump1 or st.session_state.pump2
-pump_on         = (is_safe and any_pump_active) if mode == "Automatic" else any_pump_active
+mode = "Automatic"
+pump_on         = (is_safe and any_pump_active)
 
 if not any_pump_active:
     pump_html_cls, pump_html_txt = "pump-off", "ALL PUMPS OFF"
@@ -262,28 +208,6 @@ else:
     level_color_badge  = "#7c1d1d"
     level_border_badge = "#ef4444"
     level_text_badge   = "#fca5a5"
-
-# ── HEADER BAND ──
-view_labels = ["live", "forecast", "history"]
-dot_html = ""
-for v in view_labels:
-    active_cls = "dot-nav active" if st.session_state.view == v else "dot-nav"
-    dot_html += f'<div class="{active_cls}" title="{v}"></div>'
-
-st.markdown(f"""
-<div class="header-band">
-    <span class="pump-badge {pump_html_cls}">{pump_html_txt}</span>
-    <div class="dots-nav">{dot_html}</div>
-    <span class="pump-badge" style="
-        background:{level_color_badge};
-        border:1px solid {level_border_badge};
-        color:{level_text_badge};">
-        📅 {display_date.strftime('%Y-%m-%d')} &nbsp;·&nbsp; 💧 {display_level:.2f} m
-    </span>
-</div>
-""", unsafe_allow_html=True)
-
-
 
 # ── NAV BUTTONS ──
 nav1, nav2, nav3 = st.columns(3)
@@ -347,11 +271,10 @@ if st.session_state.view == "live":
             <div style="color:{pump_color};font-size:1.1rem;">● {pump_text}</div>
             <div style="color:#475569;margin-top:4px;">Level: {current_level:.2f} m</div>
             <div style="color:#475569;">Threshold: {threshold:.1f} m</div>
-            <div style="color:#475569;">Mode: {mode}</div>
+            <div style="color:#475569;">Mode: Automatic</div>
         </div>
         """, unsafe_allow_html=True)
-        st.metric("Pump 1", "🟢 ON" if st.session_state.pump1 else "🔴 OFF")
-        st.metric("Pump 2", "🟢 ON" if st.session_state.pump2 else "🔴 OFF")
+        
         if st.session_state.control_log:
             st.markdown("**Last actions**")
             for entry in reversed(st.session_state.control_log[-4:]):
@@ -363,11 +286,11 @@ if st.session_state.view == "live":
                 )
 
     with col_chart:
-        start_btn = st.button("▶️ Start Live Simulation", type="primary")
         chart_ph  = st.empty()
+        log_ph    = st.empty()
 
         # Graph figé au point de stop
-        if st.session_state.live_stopped_at and not start_btn:
+        if st.session_state.live_stopped_at:
             stopped_ts  = pd.Timestamp(st.session_state.live_stopped_at)
             stopped_lvl = st.session_state.live_stopped_level
             sub_stopped = sim_df[sim_df["date"] <= stopped_ts]
@@ -403,6 +326,20 @@ if st.session_state.view == "live":
             )
             chart_ph.plotly_chart(fig_frozen, use_container_width=True,
                                   config={"displayModeBar": False})
+            
+            sb1, sb2 = st.columns([2, 1])
+            with sb2:
+                if st.button("■ Reset & Start", use_container_width=True, type="primary"):
+                    st.session_state.sim_running = True
+                    st.session_state.live_stopped_at = None
+                    st.session_state.live_stopped_level = None
+                    st.session_state.control_log.append({
+                        "time": datetime.now().strftime("%H:%M:%S"),
+                        "action": "Live START",
+                        "pumps": f"P1={'ON' if st.session_state.pump1 else 'OFF'} P2={'ON' if st.session_state.pump2 else 'OFF'}",
+                        "level": float(df["niveau_nappe"].iloc[-1])
+                    })
+                    st.rerun()
 
         else:
             # Graph statique par défaut
@@ -416,95 +353,98 @@ if st.session_state.view == "live":
             apply_theme(fig_static)
             fig_static.update_layout(
                 height=420, uirevision="static",
-                title="Water Level 2025 (click ▶️ to animate)"
+                title="Water Level 2025"
             )
             chart_ph.plotly_chart(fig_static, use_container_width=True,
                                   config={"displayModeBar": False})
 
-        # ── ANIMATION LIVE (smooth) ──
-        if start_btn and not sim_df.empty:
-            log_ph = st.empty()
-            state_log, cur_state, period_start = [], None, None
+            # ── ANIMATION LIVE (smooth) ──
+            sb1, sb2 = st.columns([2, 1])
+            with sb2:
+                start_btn = st.button("▶️ Start", use_container_width=True, type="primary")
 
-            # Pré-construire la figure une seule fois
-            fig_live = go.Figure()
-            fig_live.add_trace(go.Scatter(          # trace 0 : fond gris
-                x=sim_df["date"], y=sim_df["niveau_nappe"],
-                mode="lines", name="Full year",
-                line=dict(color="#c0c8d8", width=1.5), opacity=0.5
-            ))
-            fig_live.add_trace(go.Scatter(          # trace 1 : simulation
-                x=[], y=[],
-                mode="lines", name="Simulation",
-                line=dict(color="#22c55e", width=2.5)
-            ))
-            fig_live.add_trace(go.Scatter(          # trace 2 : point courant
-                x=[], y=[],
-                mode="markers+text",
-                marker=dict(size=10, color="#f59e0b", symbol="circle"),
-                textposition="top center",
-                textfont=dict(color="#d97706", size=10),
-                name="Now"
-            ))
-            add_threshold_line(fig_live, threshold)
-            apply_theme(fig_live)
-            fig_live.update_layout(
-                height=420,
-                showlegend=True,
-                uirevision="live_chart",   # ← empêche le reset de la vue
-                xaxis=dict(range=[sim_df["date"].min(), sim_df["date"].max()])
-            )
+            if start_btn and not sim_df.empty:
+                state_log, cur_state, period_start = [], None, None
 
-            for i, row in sim_df.iterrows():
-                today, lvl = row["date"], row["niveau_nappe"]
-                safe_now   = lvl > threshold
-                dam_state  = "Running" if (safe_now and any_pump_active) else "Stopped"
-                color_line = "#22c55e" if dam_state == "Running" else "#ef4444"
-
-                st.session_state.live_stopped_at    = today
-                st.session_state.live_stopped_level = float(lvl)
-
-                if dam_state != cur_state:
-                    if cur_state is not None:
-                        state_log.append({
-                            "Status": cur_state,
-                            "From": period_start.strftime("%Y-%m-%d"),
-                            "To":   (today - pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
-                            "Days": (today - period_start).days,
-                        })
-                        log_ph.dataframe(pd.DataFrame(state_log), use_container_width=True)
-                    cur_state, period_start = dam_state, today
-
-                sub = sim_df[sim_df["date"] <= today]
-
-                # Mise à jour des données sans recréer la figure
-                fig_live.data[1].x = sub["date"]
-                fig_live.data[1].y = sub["niveau_nappe"]
-                fig_live.data[1].line = dict(color=color_line, width=2.5)
-                fig_live.data[2].x = [today]
-                fig_live.data[2].y = [lvl]
-                fig_live.data[2].text = [f"{lvl:.2f}m"]
-
-                # Mise à jour annotation date
-                fig_live.layout.annotations = []
-                fig_live.add_annotation(
-                    x=today, y=1.05, xref="x", yref="paper",
-                    text=f"📅 {today.strftime('%Y-%m-%d')} | {dam_state}",
-                    showarrow=False,
-                    font=dict(size=11, color="#d97706", family="IBM Plex Mono"),
-                    bgcolor="rgba(255,255,255,0.85)", borderpad=4, xanchor="center"
+                # Pré-construire la figure une seule fois
+                fig_live = go.Figure()
+                fig_live.add_trace(go.Scatter(          # trace 0 : fond gris
+                    x=sim_df["date"], y=sim_df["niveau_nappe"],
+                    mode="lines", name="Full year",
+                    line=dict(color="#c0c8d8", width=1.5), opacity=0.5
+                ))
+                fig_live.add_trace(go.Scatter(          # trace 1 : simulation
+                    x=[], y=[],
+                    mode="lines", name="Simulation",
+                    line=dict(color="#22c55e", width=2.5)
+                ))
+                fig_live.add_trace(go.Scatter(          # trace 2 : point courant
+                    x=[], y=[],
+                    mode="markers+text",
+                    marker=dict(size=10, color="#f59e0b", symbol="circle"),
+                    textposition="top center",
+                    textfont=dict(color="#d97706", size=10),
+                    name="Now"
+                ))
+                add_threshold_line(fig_live, threshold)
+                apply_theme(fig_live)
+                fig_live.update_layout(
+                    height=420,
+                    showlegend=True,
+                    uirevision="live_chart",   # ← empêche le reset de la vue
+                    xaxis=dict(range=[sim_df["date"].min(), sim_df["date"].max()])
                 )
 
-                chart_ph.plotly_chart(
-                    fig_live,
-                    use_container_width=True,
-                    config={"displayModeBar": False}   # ← supprime toolbar = moins de flash
-                )
-                time.sleep(1.0 / sim_speed)
+                for i, row in sim_df.iterrows():
+                    today, lvl = row["date"], row["niveau_nappe"]
+                    safe_now   = lvl > threshold
+                    dam_state  = "Running" if (safe_now and any_pump_active) else "Stopped"
+                    color_line = "#22c55e" if dam_state == "Running" else "#ef4444"
 
-            total_run  = sum(x["Days"] for x in state_log if x["Status"] == "Running")
-            total_stop = sum(x["Days"] for x in state_log if x["Status"] == "Stopped")
-            st.success(f"✅ Simulation complete — **{total_run} days running** / **{total_stop} days stopped**")
+                    st.session_state.live_stopped_at    = today
+                    st.session_state.live_stopped_level = float(lvl)
+
+                    if dam_state != cur_state:
+                        if cur_state is not None:
+                            state_log.append({
+                                "Status": cur_state,
+                                "From": period_start.strftime("%Y-%m-%d"),
+                                "To":   (today - pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
+                                "Days": (today - period_start).days,
+                            })
+                            log_ph.dataframe(pd.DataFrame(state_log), use_container_width=True)
+                        cur_state, period_start = dam_state, today
+
+                    sub = sim_df[sim_df["date"] <= today]
+
+                    # Mise à jour des données sans recréer la figure
+                    fig_live.data[1].x = sub["date"]
+                    fig_live.data[1].y = sub["niveau_nappe"]
+                    fig_live.data[1].line = dict(color=color_line, width=2.5)
+                    fig_live.data[2].x = [today]
+                    fig_live.data[2].y = [lvl]
+                    fig_live.data[2].text = [f"{lvl:.2f}m"]
+
+                    # Mise à jour annotation date
+                    fig_live.layout.annotations = []
+                    fig_live.add_annotation(
+                        x=today, y=1.05, xref="x", yref="paper",
+                        text=f"📅 {today.strftime('%Y-%m-%d')} | {dam_state}",
+                        showarrow=False,
+                        font=dict(size=11, color="#d97706", family="IBM Plex Mono"),
+                        bgcolor="rgba(255,255,255,0.85)", borderpad=4, xanchor="center"
+                    )
+
+                    chart_ph.plotly_chart(
+                        fig_live,
+                        use_container_width=True,
+                        config={"displayModeBar": False}   # ← supprime toolbar = moins de flash
+                    )
+                    time.sleep(1.0 / sim_speed)
+
+                total_run  = sum(x["Days"] for x in state_log if x["Status"] == "Running")
+                total_stop = sum(x["Days"] for x in state_log if x["Status"] == "Stopped")
+                st.success(f"✅ Simulation complete — **{total_run} days running** / **{total_stop} days stopped**")
 
 # ════════════════════════════════
 # VIEW 2 : FORECASTING
