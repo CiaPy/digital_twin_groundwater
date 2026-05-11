@@ -501,7 +501,7 @@ if st.session_state.view == "live":
                         if state_log:
                             log_ph.dataframe(pd.DataFrame(state_log), use_container_width=True)
                     
-                    time.sleep(0.03 / sim_speed)  # Tempo très court
+                    time.sleep(0. /1 sim_speed)  # Tempo très court
 
                 # Affichage final
                 chart_ph.plotly_chart(
