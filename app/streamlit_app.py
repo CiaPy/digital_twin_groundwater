@@ -370,29 +370,24 @@ if st.session_state.view == "live":
                 stop_btn = st.button("■ Stop", use_container_width=True)
 
             if start_btn and not sim_df.empty:
-                # Initialiser l'état de l'animation dans session_state
-                if "live_animation" not in st.session_state:
-                    st.session_state.live_animation = {
-                        "running": True,
-                        "current_idx": 0,
-                        "state_log": [],
-                        "cur_state": None,
-                        "period_start": None,
-                        "total_steps": len(sim_df)
-                    }
-                
-                # Pré-construire la figure une seule fois
+                # Pré-construire la figure UNE SEULE FOIS avec toutes les données
                 fig_live = go.Figure()
+                
+                # Trace 0 : Full year (FIXE, ne bougera jamais)
                 fig_live.add_trace(go.Scatter(
                     x=sim_df["date"], y=sim_df["niveau_nappe"],
                     mode="lines", name="Full year",
                     line=dict(color="#c0c8d8", width=1.5), opacity=0.5
                 ))
+                
+                # Trace 1 : Simulation (sera mise à jour)
                 fig_live.add_trace(go.Scatter(
                     x=[], y=[],
                     mode="lines", name="Simulation",
                     line=dict(color="#22c55e", width=2.5)
                 ))
+                
+                # Trace 2 : Stop point (sera mise à jour)
                 fig_live.add_trace(go.Scatter(
                     x=[], y=[],
                     mode="markers+text",
@@ -401,28 +396,37 @@ if st.session_state.view == "live":
                     textfont=dict(color="#d97706", size=10),
                     name="Now"
                 ))
+                
                 add_threshold_line(fig_live, threshold)
                 apply_theme(fig_live)
                 fig_live.update_layout(
                     height=420,
                     showlegend=True,
-                    uirevision="live_chart",
+                    uirevision="live_chart_static",  # Clé statique pour empêcher reset
                     xaxis=dict(range=[sim_df["date"].min(), sim_df["date"].max()])
                 )
                 
-                # Afficher le graphique SANS config responsive pour meilleure performance
-                chart_placeholder = chart_ph.plotly_chart(
+                # Afficher le graphique UNE SEULE FOIS
+                chart_ph.plotly_chart(
                     fig_live,
                     use_container_width=True,
                     config={"displayModeBar": False, "responsive": False}
                 )
 
-                # Boucle d'animation rapide
-                start_idx = st.session_state.live_animation["current_idx"]
+                # Initialiser l'état de l'animation
+                if "live_animation" not in st.session_state:
+                    st.session_state.live_animation = {
+                        "running": True,
+                        "state_log": [],
+                        "cur_state": None,
+                        "period_start": None,
+                    }
+                
                 state_log = st.session_state.live_animation["state_log"]
                 cur_state = st.session_state.live_animation["cur_state"]
                 period_start = st.session_state.live_animation["period_start"]
                 
+                # Boucle d'animation : UNIQUEMENT mettre à jour les données des traces
                 for idx, (i, row) in enumerate(sim_df.iterrows()):
                     if not st.session_state.live_animation["running"]:
                         break
@@ -445,8 +449,8 @@ if st.session_state.view == "live":
 
                     st.session_state.live_stopped_at = today
                     st.session_state.live_stopped_level = float(lvl)
-                    st.session_state.live_animation["current_idx"] = idx
 
+                    # Tracker les changements d'état
                     if dam_state != cur_state:
                         if cur_state is not None:
                             state_log.append({
@@ -459,47 +463,47 @@ if st.session_state.view == "live":
                         st.session_state.live_animation["cur_state"] = cur_state
                         st.session_state.live_animation["period_start"] = period_start
 
+                    # UNIQUEMENT mettre à jour les données des traces 1 et 2
                     sub = sim_df[sim_df["date"] <= today]
-
-                    # Mise à jour des traces sans recreer la figure
+                    
                     fig_live.data[1].x = sub["date"]
                     fig_live.data[1].y = sub["niveau_nappe"]
-                    fig_live.data[1].line = dict(color=color_line, width=2.5)
+                    fig_live.data[1].line.color = color_line
+                    
                     fig_live.data[2].x = [today]
                     fig_live.data[2].y = [lvl]
                     fig_live.data[2].text = [f"{lvl:.2f}m"]
 
-                    # Mise à jour annotation avec gestion propre
-                    if fig_live.layout.annotations:
-                        annotations_list = list(fig_live.layout.annotations)
-                        # Garder l'annotation threshold, enlever l'annotation date
-                        fig_live.layout.annotations = [a for a in annotations_list if "Threshold" in str(a.text)]
+                    # Mettre à jour annotation date uniquement
+                    # Garder TOUTES les annotations existantes sauf la dernière annotation date
+                    new_annotations = []
+                    for ann in fig_live.layout.annotations:
+                        if "Threshold" in str(ann.text) or "📅" not in str(ann.text):
+                            new_annotations.append(ann)
                     
-                    fig_live.add_annotation(
+                    new_annotations.append(go.layout.Annotation(
                         x=today, y=1.05, xref="x", yref="paper",
                         text=f"📅 {today.strftime('%Y-%m-%d')} | {dam_state}",
                         showarrow=False,
                         font=dict(size=11, color="#d97706", family="IBM Plex Mono"),
                         bgcolor="rgba(255,255,255,0.85)", borderpad=4, xanchor="center"
-                    )
+                    ))
+                    fig_live.layout.annotations = new_annotations
 
-                    # Mise à jour du graphique uniquement TOUS LES N pas de temps
-                    # Cela réduit les flashs tout en gardant une fluidité acceptable
-                    if idx % max(1, len(sim_df) // 50) == 0 or idx == len(sim_df) - 1:
+                    # Redessiner UNIQUEMENT tous les N itérations
+                    if idx % max(1, len(sim_df) // 60) == 0 or idx == len(sim_df) - 1:
                         chart_ph.plotly_chart(
                             fig_live,
                             use_container_width=True,
                             config={"displayModeBar": False, "responsive": False}
                         )
                         
-                        # Mettre à jour le log état
                         if state_log:
                             log_ph.dataframe(pd.DataFrame(state_log), use_container_width=True)
                     
-                    # Tempo sans bloquer (sleep court pour ne pas freezer l'UI)
-                    time.sleep(0.05 / sim_speed)  # 50ms par défaut, ajustable par sim_speed
+                    time.sleep(0.03 / sim_speed)  # Tempo très court
 
-                # Affichage final et stats
+                # Affichage final
                 chart_ph.plotly_chart(
                     fig_live,
                     use_container_width=True,
