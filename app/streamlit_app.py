@@ -473,7 +473,7 @@ if st.session_state.view == "live":
                     if fig_live.layout.annotations:
                         annotations_list = list(fig_live.layout.annotations)
                         # Garder l'annotation threshold, enlever l'annotation date
-                        fig_live.layout.annotations = [a for a in annotations_list if "Threshold" in str(a.get("text", ""))]
+                        fig_live.layout.annotations = [a for a in annotations_list if "Threshold" in str(a.text)]
                     
                     fig_live.add_annotation(
                         x=today, y=1.05, xref="x", yref="paper",
