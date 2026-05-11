@@ -370,21 +370,30 @@ if st.session_state.view == "live":
                 stop_btn = st.button("■ Stop", use_container_width=True)
 
             if start_btn and not sim_df.empty:
-                state_log, cur_state, period_start = [], None, None
-
+                # Initialiser l'état de l'animation dans session_state
+                if "live_animation" not in st.session_state:
+                    st.session_state.live_animation = {
+                        "running": True,
+                        "current_idx": 0,
+                        "state_log": [],
+                        "cur_state": None,
+                        "period_start": None,
+                        "total_steps": len(sim_df)
+                    }
+                
                 # Pré-construire la figure une seule fois
                 fig_live = go.Figure()
-                fig_live.add_trace(go.Scatter(          # trace 0 : fond gris
+                fig_live.add_trace(go.Scatter(
                     x=sim_df["date"], y=sim_df["niveau_nappe"],
                     mode="lines", name="Full year",
                     line=dict(color="#c0c8d8", width=1.5), opacity=0.5
                 ))
-                fig_live.add_trace(go.Scatter(          # trace 1 : simulation
+                fig_live.add_trace(go.Scatter(
                     x=[], y=[],
                     mode="lines", name="Simulation",
                     line=dict(color="#22c55e", width=2.5)
                 ))
-                fig_live.add_trace(go.Scatter(          # trace 2 : point courant
+                fig_live.add_trace(go.Scatter(
                     x=[], y=[],
                     mode="markers+text",
                     marker=dict(size=10, color="#f59e0b", symbol="circle"),
@@ -397,13 +406,29 @@ if st.session_state.view == "live":
                 fig_live.update_layout(
                     height=420,
                     showlegend=True,
-                    uirevision="live_chart",   # ← empêche le reset de la vue
+                    uirevision="live_chart",
                     xaxis=dict(range=[sim_df["date"].min(), sim_df["date"].max()])
                 )
+                
+                # Afficher le graphique SANS config responsive pour meilleure performance
+                chart_placeholder = chart_ph.plotly_chart(
+                    fig_live,
+                    use_container_width=True,
+                    config={"displayModeBar": False, "responsive": False}
+                )
 
-                for i, row in sim_df.iterrows():
-                    # Vérifier si le bouton Stop a été cliqué
+                # Boucle d'animation rapide
+                start_idx = st.session_state.live_animation["current_idx"]
+                state_log = st.session_state.live_animation["state_log"]
+                cur_state = st.session_state.live_animation["cur_state"]
+                period_start = st.session_state.live_animation["period_start"]
+                
+                for idx, (i, row) in enumerate(sim_df.iterrows()):
+                    if not st.session_state.live_animation["running"]:
+                        break
+                    
                     if stop_btn:
+                        st.session_state.live_animation["running"] = False
                         st.session_state.control_log.append({
                             "time": datetime.now().strftime("%H:%M:%S"),
                             "action": "Live STOP → Forecast ready",
@@ -414,27 +439,29 @@ if st.session_state.view == "live":
                         break
                     
                     today, lvl = row["date"], row["niveau_nappe"]
-                    safe_now   = lvl > threshold
-                    dam_state  = "Running" if (safe_now and any_pump_active) else "Stopped"
+                    safe_now = lvl > threshold
+                    dam_state = "Running" if (safe_now and any_pump_active) else "Stopped"
                     color_line = "#22c55e" if dam_state == "Running" else "#ef4444"
 
-                    st.session_state.live_stopped_at    = today
+                    st.session_state.live_stopped_at = today
                     st.session_state.live_stopped_level = float(lvl)
+                    st.session_state.live_animation["current_idx"] = idx
 
                     if dam_state != cur_state:
                         if cur_state is not None:
                             state_log.append({
                                 "Status": cur_state,
                                 "From": period_start.strftime("%Y-%m-%d"),
-                                "To":   (today - pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
+                                "To": (today - pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
                                 "Days": (today - period_start).days,
                             })
-                            log_ph.dataframe(pd.DataFrame(state_log), use_container_width=True)
                         cur_state, period_start = dam_state, today
+                        st.session_state.live_animation["cur_state"] = cur_state
+                        st.session_state.live_animation["period_start"] = period_start
 
                     sub = sim_df[sim_df["date"] <= today]
 
-                    # Mise à jour des données sans recréer la figure
+                    # Mise à jour des traces sans recreer la figure
                     fig_live.data[1].x = sub["date"]
                     fig_live.data[1].y = sub["niveau_nappe"]
                     fig_live.data[1].line = dict(color=color_line, width=2.5)
@@ -442,8 +469,12 @@ if st.session_state.view == "live":
                     fig_live.data[2].y = [lvl]
                     fig_live.data[2].text = [f"{lvl:.2f}m"]
 
-                    # Mise à jour annotation date
-                    fig_live.layout.annotations = []
+                    # Mise à jour annotation avec gestion propre
+                    if fig_live.layout.annotations:
+                        annotations_list = list(fig_live.layout.annotations)
+                        # Garder l'annotation threshold, enlever l'annotation date
+                        fig_live.layout.annotations = [a for a in annotations_list if "Threshold" in str(a.get("text", ""))]
+                    
                     fig_live.add_annotation(
                         x=today, y=1.05, xref="x", yref="paper",
                         text=f"📅 {today.strftime('%Y-%m-%d')} | {dam_state}",
@@ -452,14 +483,30 @@ if st.session_state.view == "live":
                         bgcolor="rgba(255,255,255,0.85)", borderpad=4, xanchor="center"
                     )
 
-                    chart_ph.plotly_chart(
-                        fig_live,
-                        use_container_width=True,
-                        config={"displayModeBar": False}   # ← supprime toolbar = moins de flash
-                    )
-                    time.sleep(1.0 / sim_speed)
+                    # Mise à jour du graphique uniquement TOUS LES N pas de temps
+                    # Cela réduit les flashs tout en gardant une fluidité acceptable
+                    if idx % max(1, len(sim_df) // 50) == 0 or idx == len(sim_df) - 1:
+                        chart_ph.plotly_chart(
+                            fig_live,
+                            use_container_width=True,
+                            config={"displayModeBar": False, "responsive": False}
+                        )
+                        
+                        # Mettre à jour le log état
+                        if state_log:
+                            log_ph.dataframe(pd.DataFrame(state_log), use_container_width=True)
+                    
+                    # Tempo sans bloquer (sleep court pour ne pas freezer l'UI)
+                    time.sleep(0.05 / sim_speed)  # 50ms par défaut, ajustable par sim_speed
 
-                total_run  = sum(x["Days"] for x in state_log if x["Status"] == "Running")
+                # Affichage final et stats
+                chart_ph.plotly_chart(
+                    fig_live,
+                    use_container_width=True,
+                    config={"displayModeBar": False, "responsive": False}
+                )
+                
+                total_run = sum(x["Days"] for x in state_log if x["Status"] == "Running")
                 total_stop = sum(x["Days"] for x in state_log if x["Status"] == "Stopped")
                 st.success(f"✅ Simulation complete — **{total_run} days running** / **{total_stop} days stopped**")
 
