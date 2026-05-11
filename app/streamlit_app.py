@@ -345,21 +345,26 @@ if st.session_state.view == "live":
                     st.rerun()
 
         else:
-            # Graph statique par défaut
-            fig_static = go.Figure()
-            fig_static.add_trace(go.Scatter(
-                x=sim_df["date"], y=sim_df["niveau_nappe"],
-                mode="lines", name="Historical",
-                line=dict(color="#388bfd", width=2), opacity=0.6
-            ))
-            add_threshold_line(fig_static, threshold)
-            apply_theme(fig_static)
-            fig_static.update_layout(
-                height=420, uirevision="static",
-                title="Water Level 2025"
-            )
+            # Graph statique par défaut - créé UNE SEULE FOIS et réutilisé
+            if "fig_base" not in st.session_state:
+                st.session_state.fig_base = go.Figure()
+                st.session_state.fig_base.add_trace(go.Scatter(
+                    x=sim_df["date"], y=sim_df["niveau_nappe"],
+                    mode="lines", name="Historical",
+                    line=dict(color="#388bfd", width=2), opacity=0.6
+                ))
+                add_threshold_line(st.session_state.fig_base, threshold)
+                apply_theme(st.session_state.fig_base)
+                st.session_state.fig_base.update_layout(
+                    height=420, 
+                    uirevision="water_level_2025",  # Clé fixe pour ne jamais reset
+                    title="Water Level 2025",
+                    xaxis=dict(range=[sim_df["date"].min(), sim_df["date"].max()])
+                )
+            
+            fig_static = st.session_state.fig_base
             chart_ph.plotly_chart(fig_static, use_container_width=True,
-                                  config={"displayModeBar": False})
+                                  config={"displayModeBar": False, "responsive": False})
 
             # ── BOUTONS DE CONTRÔLE (FIXES SOUS LE GRAPHIQUE) ──
             with sb1:
@@ -370,16 +375,11 @@ if st.session_state.view == "live":
                 stop_btn = st.button("■ Stop", use_container_width=True)
 
             if start_btn and not sim_df.empty:
-                # Pré-construire la figure UNE SEULE FOIS avec toutes les données
-                fig_live = go.Figure()
+                # Copier le graphique de base et ajouter les traces d'animation
+                fig_live = st.session_state.fig_base.to_dict()  # Copier la config de base
+                fig_live = go.Figure(fig_live)
                 
-                # Trace 0 : Full year (FIXE, ne bougera jamais)
-                fig_live.add_trace(go.Scatter(
-                    x=sim_df["date"], y=sim_df["niveau_nappe"],
-                    mode="lines", name="Full year",
-                    line=dict(color="#c0c8d8", width=1.5), opacity=0.5
-                ))
-                
+                # Ajouter les deux traces qui vont être animées
                 # Trace 1 : Simulation (sera mise à jour)
                 fig_live.add_trace(go.Scatter(
                     x=[], y=[],
@@ -397,12 +397,8 @@ if st.session_state.view == "live":
                     name="Now"
                 ))
                 
-                add_threshold_line(fig_live, threshold)
-                apply_theme(fig_live)
                 fig_live.update_layout(
-                    height=420,
-                    showlegend=True,
-                    uirevision="live_chart_static",  # Clé statique pour empêcher reset
+                    uirevision="water_level_animation",  # Clé pour animation fluide
                     xaxis=dict(range=[sim_df["date"].min(), sim_df["date"].max()])
                 )
                 
@@ -426,7 +422,7 @@ if st.session_state.view == "live":
                 cur_state = st.session_state.live_animation["cur_state"]
                 period_start = st.session_state.live_animation["period_start"]
                 
-                # Boucle d'animation : UNIQUEMENT mettre à jour les données des traces
+                # Boucle d'animation : UNIQUEMENT mettre à jour les deux traces
                 for idx, (i, row) in enumerate(sim_df.iterrows()):
                     if not st.session_state.live_animation["running"]:
                         break
@@ -463,19 +459,20 @@ if st.session_state.view == "live":
                         st.session_state.live_animation["cur_state"] = cur_state
                         st.session_state.live_animation["period_start"] = period_start
 
-                    # UNIQUEMENT mettre à jour les données des traces 1 et 2
+                    # UNIQUEMENT mettre à jour les deux traces d'animation
                     sub = sim_df[sim_df["date"] <= today]
                     
-                    fig_live.data[1].x = sub["date"]
-                    fig_live.data[1].y = sub["niveau_nappe"]
-                    fig_live.data[1].line.color = color_line
+                    # Trace 1 : Simulation
+                    fig_live.data[-2].x = sub["date"]
+                    fig_live.data[-2].y = sub["niveau_nappe"]
+                    fig_live.data[-2].line.color = color_line
                     
-                    fig_live.data[2].x = [today]
-                    fig_live.data[2].y = [lvl]
-                    fig_live.data[2].text = [f"{lvl:.2f}m"]
+                    # Trace 2 : Stop point
+                    fig_live.data[-1].x = [today]
+                    fig_live.data[-1].y = [lvl]
+                    fig_live.data[-1].text = [f"{lvl:.2f}m"]
 
                     # Mettre à jour annotation date uniquement
-                    # Garder TOUTES les annotations existantes sauf la dernière annotation date
                     new_annotations = []
                     for ann in fig_live.layout.annotations:
                         if "Threshold" in str(ann.text) or "📅" not in str(ann.text):
@@ -501,7 +498,7 @@ if st.session_state.view == "live":
                         if state_log:
                             log_ph.dataframe(pd.DataFrame(state_log), use_container_width=True)
                     
-                    time.sleep(0.1 / sim_speed)  # Tempo très court
+                    time.sleep(0.03 / sim_speed)  # Tempo très court
 
                 # Affichage final
                 chart_ph.plotly_chart(
