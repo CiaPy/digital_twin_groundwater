@@ -282,7 +282,16 @@ if st.session_state.view == "live":
 
     with col_chart:
         chart_ph  = st.empty()
+        
+        # Conteneurs pour les boutons (définis une seule fois)
+        sb1, sb2, sb3 = st.columns([1, 1, 1])
+        
+        # Placeholder pour le log (sous les boutons)
         log_ph    = st.empty()
+        
+        # Variables pour tracker l'état des boutons
+        start_btn = False
+        stop_btn = False
 
         # Graph figé au point de stop
         if st.session_state.live_stopped_at:
@@ -322,7 +331,6 @@ if st.session_state.view == "live":
             chart_ph.plotly_chart(fig_frozen, use_container_width=True,
                                   config={"displayModeBar": False})
             
-            sb1, sb2 = st.columns([2, 1])
             with sb2:
                 if st.button("■ Reset & Start", use_container_width=True, type="primary"):
                     st.session_state.sim_running = True
@@ -353,8 +361,9 @@ if st.session_state.view == "live":
             chart_ph.plotly_chart(fig_static, use_container_width=True,
                                   config={"displayModeBar": False})
 
-            # ── ANIMATION LIVE (smooth) ──
-            sb1, sb2, sb3 = st.columns([1, 1, 1])
+            # ── BOUTONS DE CONTRÔLE (FIXES SOUS LE GRAPHIQUE) ──
+            with sb1:
+                pass  # Colonne vide pour l'espacement
             with sb2:
                 start_btn = st.button("▶️ Start", use_container_width=True, type="primary")
             with sb3:
