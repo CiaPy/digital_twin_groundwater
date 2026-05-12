@@ -93,6 +93,18 @@ def load_or_simulate():
         })
     return df
 
+def generate_forecast_from_point(start_date, start_level, periods=365):
+    """Génère un forecast à partir d'un point de départ (date + niveau)"""
+    fut_dates = pd.date_range(start_date + pd.Timedelta(days=1), periods=periods, freq="D")
+    rows = []
+    for sc, delta in [("dry", +1.2), ("medium", 0.0), ("wet", -0.8)]:
+        t = np.linspace(0, delta, periods)
+        s = 1.5 * np.sin(np.arange(periods) * 2*np.pi/365 + 1.2)
+        noise = np.random.normal(0, 0.2, periods)
+        for d, v in zip(fut_dates, start_level + t + s + noise):
+            rows.append({"date": d, "scenario": sc, "niveau_nappe": v})
+    return pd.DataFrame(rows)
+
 @st.cache_data
 def load_or_simulate_forecast(df):
     try:
@@ -101,15 +113,7 @@ def load_or_simulate_forecast(df):
     except Exception:
         last_val  = float(df["niveau_nappe"].iloc[-1])
         last_date = df["date"].max()
-        fut_dates = pd.date_range(last_date + pd.Timedelta(days=1), periods=365, freq="D")
-        rows = []
-        for sc, delta in [("dry", +1.2), ("medium", 0.0), ("wet", -0.8)]:
-            t = np.linspace(0, delta, 365)
-            s = 1.5 * np.sin(np.arange(365) * 2*np.pi/365 + 1.2)
-            noise = np.random.normal(0, 0.2, 365)
-            for d, v in zip(fut_dates, last_val + t + s + noise):
-                rows.append({"date": d, "scenario": sc, "niveau_nappe": v})
-        fc = pd.DataFrame(rows)
+        fc = generate_forecast_from_point(last_date, last_val, periods=365)
     return fc
 
 df = load_or_simulate()
@@ -517,21 +521,28 @@ if st.session_state.view == "live":
 elif st.session_state.view == "forecast":
     st.markdown("### 📈 Forecasting – Scenario Analysis")
 
-    last_hist_date = df["date"].max()
-    fc_future      = fc[fc["date"] > last_hist_date].copy()
     came_from_live = (st.session_state.live_stopped_at is not None)
 
+    # Recalculer le forecast à partir du stop point si on vient du Live
     if came_from_live:
-        stopped_date_str  = pd.Timestamp(st.session_state.live_stopped_at).strftime("%Y-%m-%d")
-        stopped_level_val = st.session_state.live_stopped_level
+        stopped_ts  = pd.Timestamp(st.session_state.live_stopped_at)
+        stopped_lvl = st.session_state.live_stopped_level
+        fc_current = generate_forecast_from_point(stopped_ts, stopped_lvl, periods=365)
+        
+        stopped_date_str = stopped_ts.strftime("%Y-%m-%d")
         st.markdown(f"""
         <div style="background:#fffbeb;border:1px solid #f59e0b;border-left:5px solid #f59e0b;
                     border-radius:8px;padding:10px 16px;margin-bottom:12px;
                     font-family:'IBM Plex Mono',monospace;font-size:0.82rem;color:#92400e;">
-            ⏸️ <strong>Live stopped at {stopped_date_str}</strong> — level {stopped_level_val:.2f} m
+            ⏸️ <strong>Live stopped at {stopped_date_str}</strong> — level {stopped_lvl:.2f} m
             &nbsp;|&nbsp; Forecast recalculated from this point ↓
         </div>
         """, unsafe_allow_html=True)
+    else:
+        # Sinon, utiliser le dernier forecast chargé
+        last_hist_date = df["date"].max()
+        fc_current = fc[fc["date"] > last_hist_date].copy()
+        st.info("⚠️ Run the live simulation and press Stop to generate a forecast from that point.")
 
     fc1, fc2 = st.columns([2, 1])
     with fc1:
@@ -543,22 +554,12 @@ elif st.session_state.view == "forecast":
     st.markdown("#### 🔍 Forecast Detail Window")
     fig_bot = go.Figure()
 
-    if not fc_future.empty:
-        # Ajouter le dernier point historique pour la continuité
-        last_hist_level = float(df["niveau_nappe"].iloc[-1])
-        
+    if not fc_current.empty:
         for sc in scenario_choice:
-            sc_data = fc_future[fc_future["scenario"] == sc].copy().sort_values("date")
+            sc_data = fc_current[fc_current["scenario"] == sc].copy().sort_values("date")
             if not sc_data.empty:
-                # Ajouter le point de jonction (dernier point historique)
-                junction_date = pd.Timestamp(last_hist_date)
-                sc_data_with_junction = pd.concat([
-                    pd.DataFrame({"date": [junction_date], "niveau_nappe": [last_hist_level]}),
-                    sc_data
-                ], ignore_index=True)
-                
-                dl = list(sc_data_with_junction["date"])
-                vl = list(sc_data_with_junction["niveau_nappe"])
+                dl = list(sc_data["date"])
+                vl = list(sc_data["niveau_nappe"])
                 
                 # Bande d'incertitude (±0.4m)
                 fig_bot.add_trace(go.Scatter(
@@ -568,11 +569,9 @@ elif st.session_state.view == "forecast":
                 
                 # Ligne de scénario
                 fig_bot.add_trace(go.Scatter(
-                    x=sc_data_with_junction["date"], y=sc_data_with_junction["niveau_nappe"],
+                    x=sc_data["date"], y=sc_data["niveau_nappe"],
                     mode="lines", name=sc.capitalize(),
                     line=dict(color=sc_colors[sc], width=2)))
-    else:
-        st.info("Run the live simulation and press Stop to generate a forecast from that point.")
     
     # Ajouter le stop point si disponible
     if st.session_state.live_stopped_at:
@@ -585,7 +584,7 @@ elif st.session_state.view == "forecast":
             textfont=dict(color="#f43f5e", size=10), name="Stop point"
         ))
     
-    fig_bot.update_layout(height=400, title="Forecast Scenarios (from end of history)")
+    fig_bot.update_layout(height=400, title="Forecast Scenarios")
 
     add_threshold_line(fig_bot, threshold)
     apply_theme(fig_bot)
