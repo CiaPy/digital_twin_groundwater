@@ -514,7 +514,7 @@ if st.session_state.view == "live":
                     fig_live.layout.annotations = new_annotations
 
                     # Redessiner UNIQUEMENT tous les N itérations
-                    if idx % max(1, len(sim_df) // 60) == 0 or idx == len(sim_df) - 1:
+                    if idx % max(1, len(sim_df) // 25) == 0 or idx == len(sim_df) - 1:
                         chart_ph.plotly_chart(
                             fig_live,
                             use_container_width=True,
@@ -524,7 +524,7 @@ if st.session_state.view == "live":
                         if state_log:
                             log_ph.dataframe(pd.DataFrame(state_log), use_container_width=True)
                     
-                    time.sleep(0.03 / sim_speed)  # Tempo très court
+                    time.sleep(0.07 / sim_speed)  # Tempo très court
 
                 # Affichage final
                 chart_ph.plotly_chart(
