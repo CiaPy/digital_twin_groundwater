@@ -6,7 +6,6 @@ from plotly.subplots import make_subplots
 from datetime import datetime
 import time
 import io
-from scipy.ndimage import gaussian_filter1d
 
 st.set_page_config(
     page_title="Digital Twin – Groundwater",
@@ -94,17 +93,36 @@ def load_or_simulate():
         })
     return df
 
+def smooth_curve(values, window=7):
+    """Lisse une courbe avec une moyenne mobile centrée"""
+    smoothed = np.array(values, dtype=float)
+    for i in range(len(smoothed)):
+        start = max(0, i - window // 2)
+        end = min(len(smoothed), i + window // 2 + 1)
+        smoothed[i] = np.mean(values[start:end])
+    return smoothed
+
 def generate_forecast_from_point(start_date, start_level, periods=365):
-    """Génère un forecast à partir d'un point de départ (date + niveau)"""
+    """Génère un forecast lissé à partir d'un point de départ (date + niveau)"""
     fut_dates = pd.date_range(start_date + pd.Timedelta(days=1), periods=periods, freq="D")
     rows = []
     for sc, delta in [("dry", +1.2), ("medium", 0.0), ("wet", -0.8)]:
+        # Générer la tendance brute
         t = np.linspace(0, delta, periods)
         s = 1.5 * np.sin(np.arange(periods) * 2*np.pi/365 + 1.2)
         noise = np.random.normal(0, 0.2, periods)
-        # Le premier point doit être exactement au start_level (sans bruit)
-        noise[0] = 0
-        for d, v in zip(fut_dates, start_level + t + s + noise):
+        noise[0] = 0  # Pas de bruit sur le premier point
+        
+        # Courbe brute
+        raw_curve = start_level + t + s + noise
+        
+        # Lisser avec une moyenne mobile (window=7 jours)
+        smoothed_curve = smooth_curve(raw_curve, window=7)
+        
+        # S'assurer que le premier point reste exactement au start_level
+        smoothed_curve[0] = start_level
+        
+        for d, v in zip(fut_dates, smoothed_curve):
             rows.append({"date": d, "scenario": sc, "niveau_nappe": v})
     return pd.DataFrame(rows)
 
