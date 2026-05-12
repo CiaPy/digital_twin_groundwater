@@ -358,7 +358,7 @@ if st.session_state.view == "live":
                 st.session_state.fig_base.update_layout(
                     height=420, 
                     uirevision="water_level_2025",  # Clé fixe pour ne jamais reset
-                    title="Water Level 2025",
+                    title=" ",
                     xaxis=dict(range=[sim_df["date"].min(), sim_df["date"].max()])
                 )
             
