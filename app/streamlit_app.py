@@ -109,7 +109,8 @@ def generate_forecast_from_point(start_date, start_level, periods=365):
     for sc, delta in [("dry", +1.2), ("medium", 0.0), ("wet", -0.8)]:
         # Générer la tendance brute
         t = np.linspace(0, delta, periods)
-        s = 1.5 * np.sin(np.arange(periods) * 2*np.pi/365 + 1.2)
+        # Phase ajustée pour que sin(0) = 0 au point de départ
+        s = 1.5 * np.sin(np.arange(periods) * 2*np.pi/365)
         noise = np.random.normal(0, 0.2, periods)
         noise[0] = 0  # Pas de bruit sur le premier point
         
