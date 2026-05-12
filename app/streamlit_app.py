@@ -544,16 +544,31 @@ elif st.session_state.view == "forecast":
     fig_bot = go.Figure()
 
     if not fc_future.empty:
+        # Ajouter le dernier point historique pour la continuité
+        last_hist_level = float(df["niveau_nappe"].iloc[-1])
+        
         for sc in scenario_choice:
             sc_data = fc_future[fc_future["scenario"] == sc].copy().sort_values("date")
             if not sc_data.empty:
-                dl = list(sc_data["date"]); vl = list(sc_data["niveau_nappe"])
+                # Ajouter le point de jonction (dernier point historique)
+                junction_date = pd.Timestamp(last_hist_date)
+                sc_data_with_junction = pd.concat([
+                    pd.DataFrame({"date": [junction_date], "niveau_nappe": [last_hist_level]}),
+                    sc_data
+                ], ignore_index=True)
+                
+                dl = list(sc_data_with_junction["date"])
+                vl = list(sc_data_with_junction["niveau_nappe"])
+                
+                # Bande d'incertitude (±0.4m)
                 fig_bot.add_trace(go.Scatter(
                     x=dl+dl[::-1], y=[v+0.4 for v in vl]+[v-0.4 for v in vl[::-1]],
                     fill="toself", fillcolor=sc_colors[sc],
                     opacity=0.12, line=dict(width=0), showlegend=False))
+                
+                # Ligne de scénario
                 fig_bot.add_trace(go.Scatter(
-                    x=sc_data["date"], y=sc_data["niveau_nappe"],
+                    x=sc_data_with_junction["date"], y=sc_data_with_junction["niveau_nappe"],
                     mode="lines", name=sc.capitalize(),
                     line=dict(color=sc_colors[sc], width=2)))
     else:
