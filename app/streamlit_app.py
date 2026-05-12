@@ -101,6 +101,8 @@ def generate_forecast_from_point(start_date, start_level, periods=365):
         t = np.linspace(0, delta, periods)
         s = 1.5 * np.sin(np.arange(periods) * 2*np.pi/365 + 1.2)
         noise = np.random.normal(0, 0.2, periods)
+        # Le premier point doit être exactement au start_level (sans bruit)
+        noise[0] = 0
         for d, v in zip(fut_dates, start_level + t + s + noise):
             rows.append({"date": d, "scenario": sc, "niveau_nappe": v})
     return pd.DataFrame(rows)
@@ -558,8 +560,19 @@ elif st.session_state.view == "forecast":
         for sc in scenario_choice:
             sc_data = fc_current[fc_current["scenario"] == sc].copy().sort_values("date")
             if not sc_data.empty:
-                dl = list(sc_data["date"])
-                vl = list(sc_data["niveau_nappe"])
+                # Ajouter le point de jonction (stop point)
+                if came_from_live:
+                    stopped_ts  = pd.Timestamp(st.session_state.live_stopped_at)
+                    stopped_lvl = st.session_state.live_stopped_level
+                    sc_data_with_junction = pd.concat([
+                        pd.DataFrame({"date": [stopped_ts], "scenario": [sc], "niveau_nappe": [stopped_lvl]}),
+                        sc_data
+                    ], ignore_index=True).sort_values("date")
+                else:
+                    sc_data_with_junction = sc_data
+                
+                dl = list(sc_data_with_junction["date"])
+                vl = list(sc_data_with_junction["niveau_nappe"])
                 
                 # Bande d'incertitude (±0.4m)
                 fig_bot.add_trace(go.Scatter(
@@ -569,7 +582,7 @@ elif st.session_state.view == "forecast":
                 
                 # Ligne de scénario
                 fig_bot.add_trace(go.Scatter(
-                    x=sc_data["date"], y=sc_data["niveau_nappe"],
+                    x=sc_data_with_junction["date"], y=sc_data_with_junction["niveau_nappe"],
                     mode="lines", name=sc.capitalize(),
                     line=dict(color=sc_colors[sc], width=2)))
     
