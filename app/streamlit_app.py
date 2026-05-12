@@ -559,6 +559,17 @@ elif st.session_state.view == "forecast":
     else:
         st.info("Run the live simulation and press Stop to generate a forecast from that point.")
     
+    # Ajouter le stop point si disponible
+    if st.session_state.live_stopped_at:
+        stop_ts  = pd.Timestamp(st.session_state.live_stopped_at)
+        stop_lvl = st.session_state.live_stopped_level
+        fig_bot.add_trace(go.Scatter(
+            x=[stop_ts], y=[stop_lvl], mode="markers+text",
+            marker=dict(size=12, color="#f43f5e", symbol="star"),
+            text=[f"  Stop {stop_lvl:.2f}m"], textposition="top right",
+            textfont=dict(color="#f43f5e", size=10), name="Stop point"
+        ))
+    
     fig_bot.update_layout(height=400, title="Forecast Scenarios (from end of history)")
 
     add_threshold_line(fig_bot, threshold)
