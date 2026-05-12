@@ -134,7 +134,7 @@ with st.sidebar:
     st.markdown("### ⚙️ Control Panel")
     st.markdown("---")
     threshold = st.number_input("🎯 Critical Threshold (m)", value=114.2, step=0.1, format="%.1f")
-    sim_speed = st.slider("⚡ Simulation Speed (days/s)", 0.1, 5, 5)
+    sim_speed = st.slider("⚡ Simulation Speed (days/s)", 0.1, 5, 1)
     st.markdown("---")
     st.markdown("### 🗺️ Site Overview")
     from pathlib import Path
