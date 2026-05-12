@@ -6,6 +6,7 @@ from plotly.subplots import make_subplots
 from datetime import datetime
 import time
 import io
+from scipy.ndimage import gaussian_filter1d
 
 st.set_page_config(
     page_title="Digital Twin – Groundwater",
